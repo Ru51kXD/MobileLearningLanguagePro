@@ -21,11 +21,22 @@ function LessonsStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="LessonsList" component={LessonsScreen} />
       <Stack.Screen name="LessonDetail" component={LessonDetailScreen} />
+      <Stack.Screen name="QuizDetail" component={QuizScreen} />
     </Stack.Navigator>
   );
 }
 
-export default function App() {  useEffect(() => {
+// Стек навигация для тестов
+function QuizStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="QuizMain" component={QuizScreen} />
+    </Stack.Navigator>
+  );
+}
+
+export default function App() {
+  useEffect(() => {
     const init = async () => {
       await initDatabase();
     };
@@ -66,10 +77,26 @@ export default function App() {  useEffect(() => {
           },
         })}
       >
-        <Tab.Screen name="Home" component={HomeScreen} />
-        <Tab.Screen name="Lessons" component={LessonsStack} />
-        <Tab.Screen name="Quiz" component={QuizScreen} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
+        <Tab.Screen 
+          name="Home" 
+          component={HomeScreen}
+          options={{ tabBarLabel: 'Главная' }}
+        />
+        <Tab.Screen 
+          name="Lessons" 
+          component={LessonsStack}
+          options={{ tabBarLabel: 'Уроки' }}
+        />
+        <Tab.Screen 
+          name="Quiz" 
+          component={QuizStack}
+          options={{ tabBarLabel: 'Тесты' }}
+        />
+        <Tab.Screen 
+          name="Profile" 
+          component={ProfileScreen}
+          options={{ tabBarLabel: 'Профиль' }}
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );

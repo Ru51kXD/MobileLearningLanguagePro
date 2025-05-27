@@ -1,896 +1,568 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, Animated, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+  Animated,
+  Alert,
+  ScrollView,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { saveQuizResult } from '../database/database';
 
-const { width } = Dimensions.get('window');
+interface Question {
+  id: number;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation?: string;
+}
+
+interface Quiz {
+  id: number;
+  title: string;
+  description: string;
+  questions: Question[];
+  timeLimit?: number;
+  difficulty: 'Начинающий' | 'Средний' | 'Продвинутый';
+}
+
+interface RouteParams {
+  quiz?: Quiz;
+  lesson?: {
+    id: number;
+    title: string;
+    type: string;
+  };
+  course?: {
+    title: string;
+    color: string[];
+  };
+}
 
 const QuizScreen = () => {
   const navigation = useNavigation();
-  const [selectedQuiz, setSelectedQuiz] = useState(null);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [score, setScore] = useState(0);
-  const [showResult, setShowResult] = useState(false);
-  const [userAnswers, setUserAnswers] = useState<number[]>([]);
-  const [timeLeft, setTimeLeft] = useState(30);
-  const [quizStartTime, setQuizStartTime] = useState(0);
-  const [totalTime, setTotalTime] = useState(0);
+  const route = useRoute();
+  const { quiz, lesson, course } = route.params as RouteParams;
 
-  // Анимированные значения
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [score, setScore] = useState(0);
+  const [isQuizStarted, setIsQuizStarted] = useState(false);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
-  const questionAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const resultAnim = useRef(new Animated.Value(0)).current;
-  const timerPulse = useRef(new Animated.Value(1)).current;
 
-  // Анимация появления карточек
+  // Создаем тестовые вопросы если их нет
+  const defaultQuestions: Question[] = [
+    {
+      id: 1,
+      question: 'Что такое JavaScript?',
+      options: [
+        'Язык разметки',
+        'Язык программирования',
+        'База данных',
+        'Операционная система'
+      ],
+      correctAnswer: 1,
+      explanation: 'JavaScript - это высокоуровневый язык программирования, который используется для создания интерактивных веб-страниц.'
+    },
+    {
+      id: 2,
+      question: 'Какой из этих способов объявления переменных является современным?',
+      options: [
+        'var name = "John"',
+        'let name = "John"',
+        'variable name = "John"',
+        'string name = "John"'
+      ],
+      correctAnswer: 1,
+      explanation: 'let - это современный способ объявления переменных в JavaScript, введенный в ES6.'
+    },
+    {
+      id: 3,
+      question: 'Что выведет console.log(typeof null)?',
+      options: [
+        'null',
+        'undefined',
+        'object',
+        'boolean'
+      ],
+      correctAnswer: 2,
+      explanation: 'Это известная особенность JavaScript - typeof null возвращает "object", хотя null не является объектом.'
+    },
+    {
+      id: 4,
+      question: 'Как создать функцию в JavaScript?',
+      options: [
+        'function myFunc() {}',
+        'def myFunc() {}',
+        'create function myFunc() {}',
+        'func myFunc() {}'
+      ],
+      correctAnswer: 0,
+      explanation: 'В JavaScript функции создаются с помощью ключевого слова function.'
+    },
+    {
+      id: 5,
+      question: 'Что такое DOM?',
+      options: [
+        'Язык программирования',
+        'База данных',
+        'Объектная модель документа',
+        'Веб-сервер'
+      ],
+      correctAnswer: 2,
+      explanation: 'DOM (Document Object Model) - это объектная модель документа, которая представляет HTML-документ в виде дерева объектов.'
+    }
+  ];
+
+  const currentQuiz: Quiz = quiz || {
+    id: lesson?.id || 1,
+    title: lesson?.title || 'Тест по основам JavaScript',
+    description: 'Проверьте свои знания основ JavaScript',
+    questions: defaultQuestions,
+    timeLimit: 300, // 5 минут
+    difficulty: 'Начинающий'
+  };
+
+  const currentQuestion = currentQuiz.questions[currentQuestionIndex];
+  const totalQuestions = currentQuiz.questions.length;
+
   useEffect(() => {
-    Animated.stagger(100, [
+    Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 500,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 800,
+        duration: 500,
         useNativeDriver: true,
       }),
     ]).start();
   }, []);
 
-  // Анимация смены вопроса
   useEffect(() => {
-    if (selectedQuiz && !showResult) {
-      questionAnim.setValue(0);
-      Animated.timing(questionAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [currentQuestion, selectedQuiz]);
-
-  // Анимация результата
-  useEffect(() => {
-    if (showResult) {
-      resultAnim.setValue(0);
-      Animated.spring(resultAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 8,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [showResult]);
-
-  // Анимация пульсации таймера
-  useEffect(() => {
-    if (timeLeft <= 10 && selectedQuiz && !showResult) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(timerPulse, {
-            toValue: 1.2,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(timerPulse, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      timerPulse.setValue(1);
-    }
-  }, [timeLeft, selectedQuiz, showResult]);
-
-  const quizzes = [
-    {
-      id: 1,
-      title: 'JavaScript Основы',
-      description: 'Проверьте знания основ JavaScript',
-      questions: 5,
-      difficulty: 'Начинающий',
-      color: ['#f7df1e', '#f0d000'],
-      icon: 'logo-javascript',
-      questions_data: [
-        {
-          question: 'Какой из этих типов данных НЕ является примитивным в JavaScript?',
-          options: ['string', 'number', 'object', 'boolean'],
-          correct: 2
-        },
-        {
-          question: 'Что вернет typeof null?',
-          options: ['null', 'undefined', 'object', 'string'],
-          correct: 2
-        },
-        {
-          question: 'Как объявить переменную в JavaScript?',
-          options: ['variable x', 'var x', 'v x', 'declare x'],
-          correct: 1
-        },
-        {
-          question: 'Что такое замыкание (closure)?',
-          options: ['Способ закрыть файл', 'Функция внутри функции', 'Тип данных', 'Оператор'],
-          correct: 1
-        },
-        {
-          question: 'Какой метод используется для добавления элемента в конец массива?',
-          options: ['add()', 'append()', 'push()', 'insert()'],
-          correct: 2
-        }
-      ]
-    },
-    {
-      id: 2,
-      title: 'Python Синтаксис',
-      description: 'Тест на знание синтаксиса Python',
-      questions: 4,
-      difficulty: 'Начинающий',
-      color: ['#3776ab', '#4b8bbe'],
-      icon: 'logo-python',
-      questions_data: [
-        {
-          question: 'Какой символ используется для комментариев в Python?',
-          options: ['//', '/* */', '#', '<!-- -->'],
-          correct: 2
-        },
-        {
-          question: 'Как создать список в Python?',
-          options: ['list = []', 'list = {}', 'list = ()', 'list = ""'],
-          correct: 0
-        },
-        {
-          question: 'Что выведет print(3 ** 2)?',
-          options: ['6', '9', '5', '8'],
-          correct: 1
-        },
-        {
-          question: 'Какой метод используется для получения длины списка?',
-          options: ['size()', 'length()', 'len()', 'count()'],
-          correct: 2
-        }
-      ]
-    },
-    {
-      id: 3,
-      title: 'React Компоненты',
-      description: 'Проверьте знания React компонентов',
-      questions: 4,
-      difficulty: 'Средний',
-      color: ['#61dafb', '#21232a'],
-      icon: 'logo-react',
-      questions_data: [
-        {
-          question: 'Что такое JSX?',
-          options: ['JavaScript XML', 'Java Syntax Extension', 'JSON XML', 'JavaScript Execution'],
-          correct: 0
-        },
-        {
-          question: 'Какой хук используется для управления состоянием?',
-          options: ['useEffect', 'useState', 'useContext', 'useReducer'],
-          correct: 1
-        },
-        {
-          question: 'Как передать данные от родительского к дочернему компоненту?',
-          options: ['Через state', 'Через props', 'Через context', 'Через refs'],
-          correct: 1
-        },
-        {
-          question: 'Что возвращает компонент React?',
-          options: ['Строку', 'Объект', 'JSX элемент', 'Функцию'],
-          correct: 2
-        }
-      ]
-    },
-    {
-      id: 4,
-      title: 'Java ООП',
-      description: 'Объектно-ориентированное программирование в Java',
-      questions: 5,
-      difficulty: 'Средний',
-      color: ['#ed8b00', '#5382a1'],
-      icon: 'cafe-outline',
-      questions_data: [
-        {
-          question: 'Что такое инкапсуляция?',
-          options: ['Наследование классов', 'Сокрытие данных', 'Полиморфизм', 'Абстракция'],
-          correct: 1
-        },
-        {
-          question: 'Какой модификатор доступа самый строгий?',
-          options: ['public', 'protected', 'private', 'default'],
-          correct: 2
-        },
-        {
-          question: 'Что такое конструктор?',
-          options: ['Метод для создания объектов', 'Тип данных', 'Переменная', 'Интерфейс'],
-          correct: 0
-        },
-        {
-          question: 'Можно ли наследовать от нескольких классов в Java?',
-          options: ['Да, всегда', 'Нет, никогда', 'Только с интерфейсами', 'Только абстрактные классы'],
-          correct: 1
-        },
-        {
-          question: 'Что означает ключевое слово static?',
-          options: ['Переменная не может изменяться', 'Принадлежит классу, а не объекту', 'Приватная переменная', 'Публичная переменная'],
-          correct: 1
-        }
-      ]
-    },
-    {
-      id: 5,
-      title: 'C++ Основы',
-      description: 'Базовые концепции C++',
-      questions: 4,
-      difficulty: 'Сложный',
-      color: ['#00599c', '#004482'],
-      icon: 'terminal-outline',
-      questions_data: [
-        {
-          question: 'Что такое указатель?',
-          options: ['Тип данных', 'Переменная, хранящая адрес', 'Функция', 'Класс'],
-          correct: 1
-        },
-        {
-          question: 'Какой оператор используется для выделения памяти?',
-          options: ['malloc', 'new', 'alloc', 'create'],
-          correct: 1
-        },
-        {
-          question: 'Что означает const?',
-          options: ['Переменная может изменяться', 'Переменная не может изменяться', 'Публичная переменная', 'Приватная переменная'],
-          correct: 1
-        },
-        {
-          question: 'Какой заголовочный файл нужен для cout?',
-          options: ['<stdio.h>', '<iostream>', '<conio.h>', '<string>'],
-          correct: 1
-        }
-      ]
-    },
-    {
-      id: 6,
-      title: 'Swift для iOS',
-      description: 'Разработка приложений для iOS',
-      questions: 4,
-      difficulty: 'Средний',
-      color: ['#fa7343', '#ff8c00'],
-      icon: 'logo-apple',
-      questions_data: [
-        {
-          question: 'Что такое Optional в Swift?',
-          options: ['Тип данных', 'Значение может быть nil', 'Функция', 'Класс'],
-          correct: 1
-        },
-        {
-          question: 'Как объявить константу в Swift?',
-          options: ['var', 'let', 'const', 'final'],
-          correct: 1
-        },
-        {
-          question: 'Что такое ARC?',
-          options: ['Автоматический подсчет ссылок', 'Тип данных', 'Фреймворк', 'Библиотека'],
-          correct: 0
-        },
-        {
-          question: 'Какой символ используется для безопасного извлечения Optional?',
-          options: ['!', '?', '&', '*'],
-          correct: 1
-        }
-      ]
-    },
-    {
-      id: 7,
-      title: 'Алгоритмы и структуры данных',
-      description: 'Основы алгоритмов и структур данных',
-      questions: 5,
-      difficulty: 'Сложный',
-      color: ['#8b5cf6', '#7c3aed'],
-      icon: 'git-branch-outline',
-      questions_data: [
-        {
-          question: 'Какая временная сложность у бинарного поиска?',
-          options: ['O(n)', 'O(log n)', 'O(n²)', 'O(1)'],
-          correct: 1
-        },
-        {
-          question: 'Что такое стек?',
-          options: ['FIFO структура', 'LIFO структура', 'Дерево', 'Граф'],
-          correct: 1
-        },
-        {
-          question: 'Какая сложность сортировки пузырьком в худшем случае?',
-          options: ['O(n)', 'O(n log n)', 'O(n²)', 'O(1)'],
-          correct: 2
-        },
-        {
-          question: 'Что такое хеш-таблица?',
-          options: ['Массив', 'Связанный список', 'Структура данных для быстрого поиска', 'Дерево'],
-          correct: 2
-        },
-        {
-          question: 'Какой алгоритм сортировки самый быстрый в среднем случае?',
-          options: ['Bubble Sort', 'Quick Sort', 'Selection Sort', 'Insertion Sort'],
-          correct: 1
-        }
-      ]
-    },
-    {
-      id: 8,
-      title: 'TypeScript',
-      description: 'JavaScript с типизацией',
-      questions: 4,
-      difficulty: 'Средний',
-      color: ['#3178c6', '#235a97'],
-      icon: 'code-outline',
-      questions_data: [
-        {
-          question: 'Что такое TypeScript?',
-          options: ['Новый язык программирования', 'Надстройка над JavaScript', 'Фреймворк', 'Библиотека'],
-          correct: 1
-        },
-        {
-          question: 'Как объявить тип переменной?',
-          options: ['let x: number', 'let x as number', 'let number x', 'number let x'],
-          correct: 0
-        },
-        {
-          question: 'Что такое interface?',
-          options: ['Класс', 'Функция', 'Контракт для объектов', 'Переменная'],
-          correct: 2
-        },
-        {
-          question: 'Какой файл конфигурации используется для TypeScript?',
-          options: ['package.json', 'tsconfig.json', 'config.ts', 'typescript.json'],
-          correct: 1
-        }
-      ]
-    },
-    {
-      id: 7,
-      title: 'Алгоритмы и структуры данных',
-      description: 'Основы алгоритмов и структур данных',
-      questions: 5,
-      difficulty: 'Сложный',
-      color: ['#8b5cf6', '#7c3aed'],
-      icon: 'git-branch-outline',
-      questions_data: [
-        {
-          question: 'Какая временная сложность у бинарного поиска?',
-          options: ['O(n)', 'O(log n)', 'O(n²)', 'O(1)'],
-          correct: 1
-        },
-        {
-          question: 'Что такое стек?',
-          options: ['FIFO структура', 'LIFO структура', 'Дерево', 'Граф'],
-          correct: 1
-        },
-        {
-          question: 'Какая сложность сортировки пузырьком в худшем случае?',
-          options: ['O(n)', 'O(n log n)', 'O(n²)', 'O(1)'],
-          correct: 2
-        },
-        {
-          question: 'Что такое хеш-таблица?',
-          options: ['Массив', 'Связанный список', 'Структура данных для быстрого поиска', 'Дерево'],
-          correct: 2
-        },
-        {
-          question: 'Какой алгоритм сортировки самый быстрый в среднем случае?',
-          options: ['Bubble Sort', 'Quick Sort', 'Selection Sort', 'Insertion Sort'],
-          correct: 1
-        }
-      ]
-    },
-    {
-      id: 8,
-      title: 'TypeScript',
-      description: 'JavaScript с типизацией',
-      questions: 4,
-      difficulty: 'Средний',
-      color: ['#3178c6', '#235a97'],
-      icon: 'code-outline',
-      questions_data: [
-        {
-          question: 'Что такое TypeScript?',
-          options: ['Новый язык программирования', 'Надстройка над JavaScript', 'Фреймворк', 'Библиотека'],
-          correct: 1
-        },
-        {
-          question: 'Как объявить тип переменной?',
-          options: ['let x: number', 'let x as number', 'let number x', 'number let x'],
-          correct: 0
-        },
-        {
-          question: 'Что такое interface?',
-          options: ['Класс', 'Функция', 'Контракт для объектов', 'Переменная'],
-          correct: 2
-        },
-        {
-          question: 'Какой файл конфигурации используется для TypeScript?',
-          options: ['package.json', 'tsconfig.json', 'config.ts', 'typescript.json'],
-          correct: 1
-        }
-      ]
-    }
-  ];
-
-  // Создание анимации нажатия для карточки
-  const createCardAnimation = () => {
-    const scaleValue = useRef(new Animated.Value(1)).current;
-    
-    const animatePress = () => {
-      Animated.sequence([
-        Animated.timing(scaleValue, {
-          toValue: 0.98,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleValue, {
-          toValue: 1,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    };
-
-    return { scaleValue, animatePress };
-  };
-
-  // Анимация выбора ответа
-  const createAnswerAnimation = () => {
-    const scaleValue = useRef(new Animated.Value(1)).current;
-    const flashValue = useRef(new Animated.Value(0)).current;
-    
-    const animateAnswer = (isCorrect: boolean) => {
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(scaleValue, {
-            toValue: 1.05,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scaleValue, {
-            toValue: 1,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.timing(flashValue, {
-          toValue: isCorrect ? 1 : 0.5,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    };
-
-    return { scaleValue, flashValue, animateAnswer };
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Начинающий':
-        return '#10b981';
-      case 'Средний':
-        return '#f59e0b';
-      case 'Сложный':
-        return '#ef4444';
-      default:
-        return '#6b7280';
-    }
-  };
-
-  const startQuiz = (quiz: any) => {
-    setSelectedQuiz(quiz);
-    setCurrentQuestion(0);
-    setScore(0);
-    setShowResult(false);
-    setUserAnswers([]);
-    setTimeLeft(30);
-    setQuizStartTime(Date.now());
-    setTotalTime(0);
-    
-    // Сброс анимации прогресса
-    progressAnim.setValue(0);
-  };
-
-  // Эффект для таймера
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    if (selectedQuiz && !showResult && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            // Время вышло, автоматически отвечаем неправильно
-            answerQuestion(-1);
-            return 30;
-          }
-          return prev - 1;
-        });
+    if (isQuizStarted && timeLeft > 0) {
+      const timer = setTimeout(() => {
+        setTimeLeft(timeLeft - 1);
       }, 1000);
+      return () => clearTimeout(timer);
+    } else if (isQuizStarted && timeLeft === 0) {
+      finishQuiz();
     }
+  }, [timeLeft, isQuizStarted]);
 
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [selectedQuiz, showResult, timeLeft, currentQuestion]);
-
-  const answerQuestion = (selectedAnswer: number) => {
-    const quiz = selectedQuiz as any;
-    const currentQ = quiz.questions_data[currentQuestion];
-    
-    const newAnswers = [...userAnswers, selectedAnswer];
-    setUserAnswers(newAnswers);
-    
-    let newScore = score;
-    if (selectedAnswer === currentQ.correct) {
-      newScore = score + 1;
-      setScore(newScore);
-    }
-
+  useEffect(() => {
     // Анимация прогресса
-    const newProgress = ((currentQuestion + 1) / quiz.questions_data.length);
     Animated.timing(progressAnim, {
-      toValue: newProgress,
+      toValue: (currentQuestionIndex + 1) / totalQuestions,
       duration: 300,
       useNativeDriver: false,
     }).start();
+  }, [currentQuestionIndex]);
 
-    if (currentQuestion + 1 < quiz.questions_data.length) {
-      setCurrentQuestion(currentQuestion + 1);
-      setTimeLeft(30); // Сбрасываем таймер для следующего вопроса
+  const startQuiz = () => {
+    setIsQuizStarted(true);
+    setTimeLeft(currentQuiz.timeLimit || 300);
+    setSelectedAnswers(new Array(totalQuestions).fill(-1));
+  };
+
+  const selectAnswer = (answerIndex: number) => {
+    const newAnswers = [...selectedAnswers];
+    newAnswers[currentQuestionIndex] = answerIndex;
+    setSelectedAnswers(newAnswers);
+  };
+
+  const nextQuestion = () => {
+    if (currentQuestionIndex < totalQuestions - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
-      // Подсчитываем общее время
-      const finalTime = Math.round((Date.now() - quizStartTime) / 1000);
-      setTotalTime(finalTime);
-      
-      // Сохраняем результат в базу данных с временем
-      saveQuizResult(1, quiz.id, quiz.title, newScore, quiz.questions_data.length, finalTime);
-      setShowResult(true);
+      finishQuiz();
     }
   };
 
-  const closeQuiz = () => {
-    setSelectedQuiz(null);
-    setCurrentQuestion(0);
-    setScore(0);
-    setShowResult(false);
-    setUserAnswers([]);
-    setTimeLeft(30);
-    setTotalTime(0);
-    progressAnim.setValue(0);
+  const previousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+
+  const finishQuiz = async () => {
+    // Подсчет результатов
+    let correctAnswers = 0;
+    currentQuiz.questions.forEach((question, index) => {
+      if (selectedAnswers[index] === question.correctAnswer) {
+        correctAnswers++;
+      }
+    });
+
+    const finalScore = Math.round((correctAnswers / totalQuestions) * 100);
+    setScore(finalScore);
+    setShowResults(true);
+
+    // Сохранение результатов в базу данных
+    try {
+      await saveQuizResult(
+        1, // userId
+        currentQuiz.id,
+        currentQuiz.title,
+        correctAnswers,
+        totalQuestions,
+        (currentQuiz.timeLimit || 300) - timeLeft // время, потраченное на тест
+      );
+    } catch (error) {
+      console.error('Ошибка сохранения результатов теста:', error);
+    }
   };
 
   const restartQuiz = () => {
-    setCurrentQuestion(0);
+    setCurrentQuestionIndex(0);
+    setSelectedAnswers(new Array(totalQuestions).fill(-1));
+    setShowResults(false);
     setScore(0);
-    setShowResult(false);
-    setUserAnswers([]);
-    setTimeLeft(30);
-    setQuizStartTime(Date.now());
-    setTotalTime(0);
-    progressAnim.setValue(0);
+    setIsQuizStarted(false);
+    setTimeLeft(0);
   };
 
-  const getResultMessage = (percentage: number) => {
-    if (percentage >= 90) return { msg: 'Превосходно! 🎉', color: '#10b981' };
-    if (percentage >= 70) return { msg: 'Отлично! 👏', color: '#3b82f6' };
-    if (percentage >= 50) return { msg: 'Хорошо! 👍', color: '#f59e0b' };
-    if (percentage >= 30) return { msg: 'Неплохо! 💪', color: '#f97316' };
-    return { msg: 'Попробуйте еще раз! 📚', color: '#ef4444' };
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Компонент анимированной карточки викторины
-  const AnimatedQuizCard = ({ quiz, index }: { quiz: any, index: number }) => {
-    const { scaleValue, animatePress } = createCardAnimation();
-    
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return '#10b981';
+    if (score >= 60) return '#f59e0b';
+    return '#ef4444';
+  };
+
+  const getScoreMessage = (score: number) => {
+    if (score >= 90) return 'Отлично! 🎉';
+    if (score >= 80) return 'Хорошо! 👍';
+    if (score >= 60) return 'Неплохо! 👌';
+    return 'Нужно больше практики 📚';
+  };
+
+  if (!isQuizStarted) {
     return (
-      <Animated.View
-        style={{
-          opacity: fadeAnim,
-          transform: [
-            {
-              translateY: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [50, 0],
-              })
-            },
-            {
-              scale: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.8, 1],
-              })
-            },
-            { scale: scaleValue }
-          ],
-        }}
-      >
-        <TouchableOpacity
-          style={styles.quizCard}
-          onPress={() => {
-            animatePress();
-            setTimeout(() => startQuiz(quiz), 150);
-          }}
-          activeOpacity={0.9}
-        >
-          <LinearGradient
-            colors={quiz.color}
-            style={styles.cardGradient}
+      <SafeAreaView style={styles.container}>
+        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
           >
-            <View style={styles.cardContent}>
-              <View style={styles.cardHeader}>
-                <Animated.View style={[styles.iconContainer, {
-                  transform: [{
-                    rotate: scaleValue.interpolate({
-                      inputRange: [0.98, 1],
-                      outputRange: ['-5deg', '0deg'],
-                    })
-                  }]
-                }]}>
-                  <Ionicons name={quiz.icon as any} size={28} color="white" />
-                </Animated.View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.quizTitle}>{quiz.title}</Text>
-                  <Text style={styles.quizDescription}>{quiz.description}</Text>
+            <Ionicons name="arrow-back" size={24} color="#6366f1" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Тест</Text>
+          <View style={styles.placeholder} />
+        </Animated.View>
+
+        <ScrollView style={styles.content}>
+          <Animated.View style={[styles.quizIntro, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <LinearGradient
+              colors={course?.color || ['#6366f1', '#8b5cf6']}
+              style={styles.introGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.introContent}>
+                <View style={styles.quizIconContainer}>
+                  <Ionicons name="help-circle" size={48} color="white" />
                 </View>
-              </View>
-              
-              <View style={styles.cardFooter}>
+                
+                <Text style={styles.quizTitle}>{currentQuiz.title}</Text>
+                <Text style={styles.quizDescription}>{currentQuiz.description}</Text>
+                
                 <View style={styles.quizStats}>
                   <View style={styles.statItem}>
-                    <Ionicons name="help-circle-outline" size={16} color="rgba(255,255,255,0.8)" />
-                    <Text style={styles.statText}>{quiz.questions} вопросов</Text>
+                    <Ionicons name="help-outline" size={20} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.statText}>{totalQuestions} вопросов</Text>
                   </View>
-                  <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(quiz.difficulty) }]}>
-                    <Text style={styles.difficultyText}>{quiz.difficulty}</Text>
+                  <View style={styles.statItem}>
+                    <Ionicons name="time-outline" size={20} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.statText}>{formatTime(currentQuiz.timeLimit || 300)}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Ionicons name="trending-up-outline" size={20} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.statText}>{currentQuiz.difficulty}</Text>
                   </View>
                 </View>
-                <Animated.View style={[styles.playButton, {
-                  transform: [{
-                    scale: scaleValue.interpolate({
-                      inputRange: [0.98, 1],
-                      outputRange: [0.9, 1],
-                    })
-                  }]
-                }]}>
-                  <Ionicons name="play" size={16} color="rgba(255,255,255,0.9)" />
-                </Animated.View>
               </View>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  };
+            </LinearGradient>
+          </Animated.View>
 
-  const renderQuizModal = () => {
-    if (!selectedQuiz) return null;
-    
-    const quiz = selectedQuiz as any;
-    
-    if (showResult) {
-      const percentage = Math.round((score / quiz.questions_data.length) * 100);
-      const result = getResultMessage(percentage);
-      
-      return (
-        <Modal visible={true} animationType="slide">
-          <LinearGradient colors={quiz.color} style={styles.modalContainer}>
-            <Animated.View style={[styles.resultContainer, {
-              opacity: resultAnim,
-              transform: [{
-                scale: resultAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.3, 1],
-                })
-              }]
-            }]}>
-              <Animated.View style={{
-                transform: [{
-                  rotate: resultAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0deg', '360deg'],
-                  })
-                }]
-              }}>
-                <Ionicons name="trophy-outline" size={80} color="white" />
-              </Animated.View>
-              <Text style={styles.resultTitle}>Викторина завершена!</Text>
-              <Text style={[styles.resultMessage, { color: result.color }]}>
-                {result.msg}
-              </Text>
-              <Text style={styles.resultScore}>
-                {score} из {quiz.questions_data.length} правильных ответов
-              </Text>
-              <Text style={styles.resultTime}>
-                ⏱️ Время: {Math.floor(totalTime / 60)}:{(totalTime % 60).toString().padStart(2, '0')}
-              </Text>
-              <Animated.Text style={[styles.resultPercentage, {
-                transform: [{
-                  scale: resultAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 1],
-                  })
-                }]
-              }]}>
-                {percentage}%
-              </Animated.Text>
-              
-              <Animated.View style={[styles.resultButtons, {
-                opacity: resultAnim,
-                transform: [{
-                  translateY: resultAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [50, 0],
-                  })
-                }]
-              }]}>
-                <TouchableOpacity style={styles.actionButton} onPress={restartQuiz}>
-                  <Ionicons name="refresh" size={20} color="white" />
-                  <Text style={styles.actionButtonText}>Повторить</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.closeButton} onPress={closeQuiz}>
-                  <Ionicons name="checkmark" size={20} color="white" />
-                  <Text style={styles.closeButtonText}>Завершить</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.actionButton, { backgroundColor: 'rgba(255,255,255,0.3)' }]} 
-                  onPress={() => {
-                    closeQuiz();
-                    navigation.navigate('Profile' as never);
-                  }}
-                >
-                  <Ionicons name="person" size={20} color="white" />
-                  <Text style={styles.actionButtonText}>Профиль</Text>
-                </TouchableOpacity>
-              </Animated.View>
-            </Animated.View>
-          </LinearGradient>
-        </Modal>
-      );
-    }
-
-    const currentQ = quiz.questions_data[currentQuestion];
-    const progress = ((currentQuestion + 1) / quiz.questions_data.length) * 100;
-    
-    return (
-      <Modal visible={true} animationType="slide">
-        <LinearGradient colors={quiz.color} style={styles.modalContainer}>
-          <View style={styles.quizHeader}>
-            <TouchableOpacity onPress={closeQuiz} style={styles.backButton}>
-              <Ionicons name="close" size={24} color="white" />
-            </TouchableOpacity>
-            <Text style={styles.quizTitle}>{quiz.title}</Text>
-            <View style={styles.headerRight}>
-              <Animated.View style={[styles.timerContainer, { 
-                backgroundColor: timeLeft <= 10 ? '#ef4444' : 'rgba(255,255,255,0.2)',
-                transform: [{ scale: timerPulse }]
-              }]}>
-                <Ionicons name="time-outline" size={16} color="white" />
-                <Text style={styles.timerText}>{timeLeft}s</Text>
-              </Animated.View>
-              <Text style={styles.questionCounter}>
-                {currentQuestion + 1} / {quiz.questions_data.length}
+          <Animated.View style={[styles.instructions, { opacity: fadeAnim }]}>
+            <Text style={styles.instructionsTitle}>📋 Инструкции</Text>
+            <View style={styles.instructionItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <Text style={styles.instructionText}>
+                Внимательно читайте каждый вопрос
               </Text>
             </View>
-          </View>
-
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <Animated.View 
-                style={[styles.progressFill, { 
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  })
-                }]} 
-              />
+            <View style={styles.instructionItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <Text style={styles.instructionText}>
+                Выберите один правильный ответ
+              </Text>
             </View>
-            <Text style={styles.progressText}>{Math.round(progress)}% завершено</Text>
-          </View>
-
-          <Animated.View style={[styles.questionContainer, {
-            opacity: questionAnim,
-            transform: [{
-              translateY: questionAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [30, 0],
-              })
-            }]
-          }]}>
-            <Text style={styles.questionText}>{currentQ.question}</Text>
-            
-            <View style={styles.optionsContainer}>
-              {currentQ.options.map((option: string, index: number) => {
-                const { scaleValue, flashValue, animateAnswer } = createAnswerAnimation();
-                
-                return (
-                  <Animated.View
-                    key={index}
-                    style={{
-                      opacity: questionAnim,
-                      transform: [
-                        {
-                          translateX: questionAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [index % 2 === 0 ? -50 : 50, 0],
-                          })
-                        },
-                        { scale: scaleValue }
-                      ],
-                    }}
-                  >
-                    <TouchableOpacity
-                      style={styles.optionButton}
-                      onPress={() => {
-                        animateAnswer(index === currentQ.correct);
-                        setTimeout(() => answerQuestion(index), 300);
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Animated.View style={[styles.optionContent, {
-                        backgroundColor: flashValue.interpolate({
-                          inputRange: [0, 0.5, 1],
-                          outputRange: ['rgba(255,255,255,0.2)', 'rgba(239,68,68,0.3)', 'rgba(16,185,129,0.3)'],
-                        })
-                      }]}>
-                        <View style={styles.optionNumber}>
-                          <Text style={styles.optionNumberText}>{String.fromCharCode(65 + index)}</Text>
-                        </View>
-                        <Text style={styles.optionText}>{option}</Text>
-                      </Animated.View>
-                    </TouchableOpacity>
-                  </Animated.View>
-                );
-              })}
+            <View style={styles.instructionItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <Text style={styles.instructionText}>
+                Следите за временем
+              </Text>
+            </View>
+            <View style={styles.instructionItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <Text style={styles.instructionText}>
+                Можно вернуться к предыдущим вопросам
+              </Text>
             </View>
           </Animated.View>
-        </LinearGradient>
-      </Modal>
+        </ScrollView>
+
+        <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
+          <TouchableOpacity style={styles.startButton} onPress={startQuiz}>
+            <LinearGradient
+              colors={['#10b981', '#059669']}
+              style={styles.startButtonGradient}
+            >
+              <Ionicons name="play" size={20} color="white" />
+              <Text style={styles.startButtonText}>Начать тест</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+      </SafeAreaView>
     );
-  };
+  }
+
+  if (showResults) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#6366f1" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Результаты</Text>
+          <View style={styles.placeholder} />
+        </Animated.View>
+
+        <ScrollView style={styles.content}>
+          <Animated.View style={[styles.resultsContainer, { opacity: fadeAnim }]}>
+            <LinearGradient
+              colors={[getScoreColor(score), getScoreColor(score) + '80']}
+              style={styles.resultsGradient}
+            >
+              <View style={styles.resultsContent}>
+                <Text style={styles.resultsTitle}>{getScoreMessage(score)}</Text>
+                <Text style={styles.scoreText}>{score}%</Text>
+                <Text style={styles.scoreSubtext}>
+                  {selectedAnswers.filter((answer, index) => answer === currentQuiz.questions[index].correctAnswer).length} из {totalQuestions} правильных ответов
+                </Text>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+
+          <View style={styles.detailedResults}>
+            <Text style={styles.detailedTitle}>Подробные результаты</Text>
+            {currentQuiz.questions.map((question, index) => {
+              const isCorrect = selectedAnswers[index] === question.correctAnswer;
+              const userAnswer = selectedAnswers[index];
+              
+              return (
+                <View key={question.id} style={styles.questionResult}>
+                  <View style={styles.questionHeader}>
+                    <Text style={styles.questionNumber}>Вопрос {index + 1}</Text>
+                    <Ionicons 
+                      name={isCorrect ? "checkmark-circle" : "close-circle"} 
+                      size={24} 
+                      color={isCorrect ? "#10b981" : "#ef4444"} 
+                    />
+                  </View>
+                  
+                  <Text style={styles.questionText}>{question.question}</Text>
+                  
+                  <View style={styles.answersReview}>
+                    {question.options.map((option, optionIndex) => {
+                      const isUserAnswer = userAnswer === optionIndex;
+                      const isCorrectAnswer = optionIndex === question.correctAnswer;
+                      
+                      return (
+                        <View 
+                          key={optionIndex}
+                          style={[
+                            styles.answerOption,
+                            isCorrectAnswer && styles.correctAnswer,
+                            isUserAnswer && !isCorrectAnswer && styles.wrongAnswer
+                          ]}
+                        >
+                          <Text style={[
+                            styles.answerText,
+                            isCorrectAnswer && styles.correctAnswerText,
+                            isUserAnswer && !isCorrectAnswer && styles.wrongAnswerText
+                          ]}>
+                            {option}
+                          </Text>
+                          {isCorrectAnswer && (
+                            <Ionicons name="checkmark" size={16} color="#10b981" />
+                          )}
+                          {isUserAnswer && !isCorrectAnswer && (
+                            <Ionicons name="close" size={16} color="#ef4444" />
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                  
+                  {question.explanation && (
+                    <View style={styles.explanation}>
+                      <Text style={styles.explanationText}>{question.explanation}</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.actionButton} onPress={restartQuiz}>
+            <Ionicons name="refresh" size={20} color="#6366f1" />
+            <Text style={styles.actionButtonText}>Пройти снова</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.primaryButton]} 
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="checkmark" size={20} color="white" />
+            <Text style={[styles.actionButtonText, styles.primaryButtonText]}>Завершить</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#6366f1', '#8b5cf6']}
-        style={styles.header}
-      >
-        <Animated.View style={{
-          opacity: fadeAnim,
-          transform: [{
-            translateY: slideAnim
-          }]
-        }}>
-          <Text style={styles.title}>Викторины</Text>
-          <Text style={styles.subtitle}>Проверьте свои знания</Text>
-          <View style={styles.statsContainer}>
-            <Text style={styles.statsText}>{quizzes.length} викторин доступно</Text>
+    <SafeAreaView style={styles.container}>
+      <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            Alert.alert(
+              'Выйти из теста?',
+              'Ваш прогресс будет потерян',
+              [
+                { text: 'Отмена', style: 'cancel' },
+                { text: 'Выйти', onPress: () => navigation.goBack() }
+              ]
+            );
+          }}
+        >
+          <Ionicons name="close" size={24} color="#6366f1" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>
+          {currentQuestionIndex + 1} из {totalQuestions}
+        </Text>
+        <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+      </Animated.View>
+
+      <View style={styles.progressContainer}>
+        <Animated.View 
+          style={[
+            styles.progressBar,
+            {
+              width: progressAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0%', '100%']
+              })
+            }
+          ]} 
+        />
+      </View>
+
+      <ScrollView style={styles.content}>
+        <Animated.View style={[styles.questionContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          <Text style={styles.questionTitle}>Вопрос {currentQuestionIndex + 1}</Text>
+          <Text style={styles.questionText}>{currentQuestion.question}</Text>
+          
+          <View style={styles.optionsContainer}>
+            {currentQuestion.options.map((option, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.optionButton,
+                  selectedAnswers[currentQuestionIndex] === index && styles.selectedOption
+                ]}
+                onPress={() => selectAnswer(index)}
+              >
+                <View style={[
+                  styles.optionIndicator,
+                  selectedAnswers[currentQuestionIndex] === index && styles.selectedIndicator
+                ]}>
+                  {selectedAnswers[currentQuestionIndex] === index && (
+                    <Ionicons name="checkmark" size={16} color="white" />
+                  )}
+                </View>
+                <Text style={[
+                  styles.optionText,
+                  selectedAnswers[currentQuestionIndex] === index && styles.selectedOptionText
+                ]}>
+                  {option}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </Animated.View>
-      </LinearGradient>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {quizzes.map((quiz, index) => (
-          <AnimatedQuizCard key={quiz.id} quiz={quiz} index={index} />
-        ))}
-        
-        <View style={styles.bottomPadding} />
       </ScrollView>
 
-      {renderQuizModal()}
-    </View>
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={[styles.navButton, currentQuestionIndex === 0 && styles.disabledButton]}
+          onPress={previousQuestion}
+          disabled={currentQuestionIndex === 0}
+        >
+          <Ionicons name="chevron-back" size={20} color={currentQuestionIndex === 0 ? "#9ca3af" : "#6366f1"} />
+          <Text style={[styles.navButtonText, currentQuestionIndex === 0 && styles.disabledText]}>
+            Назад
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[
+            styles.navButton, 
+            styles.primaryButton,
+            selectedAnswers[currentQuestionIndex] === -1 && styles.disabledButton
+          ]}
+          onPress={nextQuestion}
+          disabled={selectedAnswers[currentQuestionIndex] === -1}
+        >
+          <Text style={[
+            styles.navButtonText, 
+            styles.primaryButtonText,
+            selectedAnswers[currentQuestionIndex] === -1 && styles.disabledText
+          ]}>
+            {currentQuestionIndex === totalQuestions - 1 ? 'Завершить' : 'Далее'}
+          </Text>
+          <Ionicons 
+            name={currentQuestionIndex === totalQuestions - 1 ? "checkmark" : "chevron-forward"} 
+            size={20} 
+            color={selectedAnswers[currentQuestionIndex] === -1 ? "#9ca3af" : "white"} 
+          />
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -900,304 +572,356 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   header: {
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
-  title: {
-    fontSize: 28,
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
+  backButton: {
+    padding: 5,
   },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  statsContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-  },
-  statsText: {
-    color: 'white',
-    fontSize: 14,
+  headerTitle: {
+    fontSize: 18,
     fontWeight: '600',
+    color: '#1f2937',
+  },
+  placeholder: {
+    width: 34,
+  },
+  timerText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ef4444',
+  },
+  progressContainer: {
+    height: 4,
+    backgroundColor: '#e5e7eb',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#6366f1',
   },
   content: {
     flex: 1,
-    padding: 20,
   },
-  quizCard: {
+  quizIntro: {
+    margin: 20,
     borderRadius: 16,
-    marginBottom: 16,
     overflow: 'hidden',
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
   },
-  cardGradient: {
-    padding: 20,
+  introGradient: {
+    padding: 24,
   },
-  cardContent: {
-    flex: 1,
+  introContent: {
+    alignItems: 'center',
   },
-  cardHeader: {
-    flexDirection: 'row',
+  quizIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
-  iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
+  quizTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: 8,
   },
-  cardInfo: {
+  quizDescription: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  quizStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  statItem: {
+    alignItems: 'center',
     flex: 1,
   },
-  quizTitle: {
+  statText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  instructions: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  instructionsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 12,
+  },
+  instructionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  instructionText: {
+    fontSize: 14,
+    color: '#6b7280',
+    flex: 1,
+  },
+  footer: {
+    padding: 20,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  startButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  startButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  startButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  questionContainer: {
+    padding: 20,
+  },
+  questionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6366f1',
+    marginBottom: 8,
+  },
+  questionText: {
     fontSize: 20,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 24,
+    lineHeight: 28,
+  },
+  optionsContainer: {
+    gap: 12,
+  },
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    gap: 12,
+  },
+  selectedOption: {
+    borderColor: '#6366f1',
+    backgroundColor: '#f0f4ff',
+  },
+  optionIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedIndicator: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#374151',
+    flex: 1,
+  },
+  selectedOptionText: {
+    color: '#6366f1',
+    fontWeight: '600',
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    gap: 6,
+    flex: 1,
+  },
+  primaryButton: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+  },
+  disabledButton: {
+    backgroundColor: '#f3f4f6',
+    borderColor: '#e5e7eb',
+  },
+  navButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6366f1',
+  },
+  primaryButtonText: {
+    color: 'white',
+  },
+  disabledText: {
+    color: '#9ca3af',
+  },
+  resultsContainer: {
+    margin: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  resultsGradient: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  resultsContent: {
+    alignItems: 'center',
+  },
+  resultsTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+  },
+  scoreText: {
+    fontSize: 48,
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 4,
   },
-  quizDescription: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  quizStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  statText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginLeft: 4,
-  },
-  difficultyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  difficultyText: {
-    fontSize: 12,
-    color: 'white',
-    fontWeight: '600',
-  },
-  playButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalContainer: {
-    flex: 1,
-  },
-  quizHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  headerRight: {
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  timerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  timerText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  questionCounter: {
+  scoreSubtext: {
     fontSize: 16,
-    color: 'white',
-    fontWeight: '600',
-  },
-  progressContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: 'white',
-    borderRadius: 4,
-  },
-  progressText: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  questionContainer: {
-    flex: 1,
-    padding: 20,
-  },
-  questionText: {
-    fontSize: 24,
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 40,
-    lineHeight: 32,
-  },
-  optionsContainer: {
-    flex: 1,
-  },
-  optionButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 16,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  optionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-  },
-  optionNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  optionNumberText: {
-    fontSize: 16,
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  optionText: {
-    fontSize: 18,
-    color: 'white',
-    fontWeight: '600',
-    flex: 1,
-  },
-  resultContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-  },
-  resultTitle: {
-    fontSize: 32,
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 16,
-  },
-  resultMessage: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  resultScore: {
-    fontSize: 20,
     color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
-    marginBottom: 10,
   },
-  resultTime: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-    marginBottom: 10,
+  detailedResults: {
+    padding: 20,
   },
-  resultPercentage: {
-    fontSize: 48,
-    color: 'white',
-    fontWeight: 'bold',
-    marginBottom: 40,
+  detailedTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 16,
   },
-  resultButtons: {
+  questionResult: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  questionHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  questionNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6366f1',
+  },
+  answersReview: {
+    gap: 8,
+    marginTop: 12,
+  },
+  answerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  correctAnswer: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#10b981',
+  },
+  wrongAnswer: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#ef4444',
+  },
+  answerText: {
+    fontSize: 14,
+    color: '#374151',
+    flex: 1,
+  },
+  correctAnswerText: {
+    color: '#10b981',
+    fontWeight: '600',
+  },
+  wrongAnswerText: {
+    color: '#ef4444',
+    fontWeight: '600',
+  },
+  explanation: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#6366f1',
+  },
+  explanationText: {
+    fontSize: 14,
+    color: '#6b7280',
+    lineHeight: 20,
   },
   actionButton: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 25,
     alignItems: 'center',
-  },
-  actionButtonText: {
-    fontSize: 16,
-    color: 'white',
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  closeButton: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 25,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: 'white',
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  bottomPadding: {
-    height: 20,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#6366f1',
+    gap: 6,
+    flex: 1,
   },
 });
 

@@ -1,196 +1,434 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, SafeAreaView, Modal, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { saveLessonProgress } from '../database/database';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+interface Course {
+  id: number;
+  title: string;
+  description: string;
+  icon: string;
+  color: string[];
+  lessons: number;
+  difficulty: 'Начинающий' | 'Средний' | 'Продвинутый';
+  progress: number;
+  category: string;
+  estimatedTime: string;
+  chapters: Chapter[];
+}
+
+interface Chapter {
+  id: number;
+  title: string;
+  lessons: Lesson[];
+  completed: boolean;
+}
+
+interface Lesson {
+  id: number;
+  title: string;
+  description: string;
+  content: string;
+  duration: number;
+  completed: boolean;
+  type: 'theory' | 'practice' | 'test';
+}
 
 const LessonsScreen = () => {
-  console.log('=== LessonsScreen RENDERING ===');
-  
   const navigation = useNavigation();
-  const [selectedCategory, setSelectedCategory] = useState('Все');
-  const [selectedDifficulty, setSelectedDifficulty] = useState('Все');
-  const [selectedLanguage, setSelectedLanguage] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [showResultModal, setShowResultModal] = useState(false);
-  const [resultData, setResultData] = useState(null);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [showCourseModal, setShowCourseModal] = useState(false);
+  const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
+  const [showLessonModal, setShowLessonModal] = useState(false);
+  const [lessonProgress, setLessonProgress] = useState(0);
+  const [isLessonCompleted, setIsLessonCompleted] = useState(false);
+  const [coursesData, setCoursesData] = useState<Course[]>([]);
 
-  // Анимированные значения
+  // Анимации
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
-  const filterAnim = useRef(new Animated.Value(0)).current;
-  const cardsAnim = useRef(new Animated.Value(0)).current;
   const modalAnim = useRef(new Animated.Value(0)).current;
-  const modalSlideAnim = useRef(new Animated.Value(300)).current;
-  const resultModalAnim = useRef(new Animated.Value(0)).current;
-  const resultSlideAnim = useRef(new Animated.Value(300)).current;
+  const modalSlideAnim = useRef(new Animated.Value(height)).current;
 
   useEffect(() => {
-    // Упрощенная анимация появления
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 300,
+        duration: 600,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(filterAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(cardsAnim, {
-        toValue: 1,
-        duration: 200,
+        duration: 600,
         useNativeDriver: true,
       }),
     ]).start();
+    
+    // Инициализируем данные курсов
+    setCoursesData(courses);
   }, []);
 
-  const languages = [
+  const courses: Course[] = [
     {
       id: 1,
-      name: 'JavaScript',
-      description: 'Язык веб-разработки',
-      lessons: 25,
-      difficulty: 'Начинающий',
-      color: ['#f7df1e', '#f0d000'],
+      title: 'JavaScript Основы',
+      description: 'Изучите основы JavaScript с нуля до продвинутого уровня',
       icon: 'logo-javascript',
-      category: 'Веб-разработка'
+      color: ['#f7df1e', '#f0d000'],
+      lessons: 24,
+      difficulty: 'Начинающий',
+      progress: 0,
+      category: 'Веб-разработка',
+      estimatedTime: '6 недель',
+      chapters: [
+        {
+          id: 1,
+          title: 'Введение в JavaScript',
+          completed: false,
+          lessons: [
+            {
+              id: 1,
+              title: 'Что такое JavaScript?',
+              description: 'Знакомство с языком программирования JavaScript',
+              content: `JavaScript - это высокоуровневый, интерпретируемый язык программирования.
+
+Основные особенности JavaScript:
+• Динамическая типизация
+• Прототипное наследование  
+• Функции первого класса
+• Событийно-ориентированное программирование
+
+JavaScript используется для:
+- Веб-разработки (фронтенд и бэкенд)
+- Мобильных приложений
+- Десктопных приложений
+- Серверных приложений
+
+Пример простого кода:
+console.log("Привет, мир!");
+
+let name = "Студент";
+console.log("Привет, " + name + "!");`,
+              duration: 15,
+              completed: false,
+              type: 'theory'
+            },
+            {
+              id: 2,
+              title: 'Переменные и типы данных',
+              description: 'Изучаем переменные, константы и типы данных в JavaScript',
+              content: `В JavaScript есть несколько способов объявления переменных:
+
+1. var - устаревший способ
+2. let - для изменяемых переменных
+3. const - для констант
+
+Типы данных:
+• Number - числа
+• String - строки
+• Boolean - логический тип
+• Object - объекты
+• Array - массивы
+• null - пустое значение
+• undefined - неопределенное значение
+
+Примеры:
+let age = 25;
+const name = "Иван";
+let isStudent = true;
+let hobbies = ["программирование", "чтение"];`,
+              duration: 20,
+              completed: false,
+              type: 'theory'
+            },
+            {
+              id: 3,
+              title: 'Тест: Основы JavaScript',
+              description: 'Проверьте свои знания основ JavaScript',
+              content: 'Тестирование знаний по основам JavaScript',
+              duration: 10,
+              completed: false,
+              type: 'test'
+            }
+          ]
+        },
+        {
+          id: 2,
+          title: 'Функции и области видимости',
+          completed: false,
+          lessons: [
+            {
+              id: 4,
+              title: 'Объявление функций',
+              description: 'Различные способы создания функций в JavaScript',
+              content: `Функции в JavaScript можно создавать несколькими способами:
+
+1. Function Declaration:
+function greet(name) {
+    return "Привет, " + name + "!";
+}
+
+2. Function Expression:
+const greet = function(name) {
+    return "Привет, " + name + "!";
+};
+
+3. Arrow Functions:
+const greet = (name) => {
+    return "Привет, " + name + "!";
+};
+
+// Сокращенная запись
+const greet = name => "Привет, " + name + "!";
+
+Функции могут принимать параметры и возвращать значения.`,
+              duration: 25,
+              completed: false,
+              type: 'theory'
+            }
+          ]
+        }
+      ]
     },
     {
       id: 2,
-      name: 'Python',
-      description: 'Простой и мощный язык',
-      lessons: 30,
-      difficulty: 'Начинающий',
-      color: ['#3776ab', '#4b8bbe'],
+      title: 'Python для начинающих',
+      description: 'Изучите Python - простой и мощный язык программирования',
       icon: 'logo-python',
-      category: 'Data Science'
+      color: ['#3776ab', '#4b8bbe'],
+      lessons: 20,
+      difficulty: 'Начинающий',
+      progress: 0,
+      category: 'Программирование',
+      estimatedTime: '5 недель',
+      chapters: [
+        {
+          id: 1,
+          title: 'Основы Python',
+          completed: false,
+          lessons: [
+            {
+              id: 1,
+              title: 'Введение в Python',
+              description: 'Знакомство с языком Python и его возможностями',
+              content: `Python - это высокоуровневый язык программирования общего назначения.
+
+Преимущества Python:
+• Простой и читаемый синтаксис
+• Большая стандартная библиотека
+• Кроссплатформенность
+• Активное сообщество
+
+Python используется в:
+- Веб-разработке
+- Анализе данных
+- Машинном обучении
+- Автоматизации
+- Научных вычислениях
+
+Первая программа:
+print("Привет, мир!")
+
+name = "Студент"
+print(f"Привет, {name}!")`,
+              duration: 15,
+              completed: false,
+              type: 'theory'
+            },
+            {
+              id: 2,
+              title: 'Переменные и типы данных',
+              description: 'Работа с переменными и основными типами данных в Python',
+              content: `В Python переменные создаются простым присваиванием:
+
+Основные типы данных:
+• int - целые числа
+• float - числа с плавающей точкой
+• str - строки
+• bool - логический тип
+• list - списки
+• dict - словари
+• tuple - кортежи
+
+Примеры:
+age = 25
+height = 175.5
+name = "Анна"
+is_student = True
+grades = [5, 4, 5, 3, 4]
+person = {"name": "Иван", "age": 30}
+
+Python автоматически определяет тип переменной.`,
+              duration: 20,
+              completed: false,
+              type: 'theory'
+            }
+          ]
+        }
+      ]
     },
     {
       id: 3,
-      name: 'React',
-      description: 'Библиотека для UI',
-      lessons: 20,
-      difficulty: 'Средний',
-      color: ['#61dafb', '#21232a'],
+      title: 'React разработка',
+      description: 'Создавайте современные веб-приложения с React',
       icon: 'logo-react',
-      category: 'Веб-разработка'
+      color: ['#61dafb', '#21232a'],
+      lessons: 18,
+      difficulty: 'Средний',
+      progress: 0,
+      category: 'Веб-разработка',
+      estimatedTime: '4 недели',
+      chapters: [
+        {
+          id: 1,
+          title: 'Основы React',
+          completed: false,
+          lessons: [
+            {
+              id: 1,
+              title: 'Что такое React?',
+              description: 'Введение в библиотеку React для создания пользовательских интерфейсов',
+              content: `React - это JavaScript библиотека для создания пользовательских интерфейсов.
+
+Ключевые концепции React:
+• Компоненты - переиспользуемые части UI
+• JSX - синтаксис для описания UI
+• Virtual DOM - виртуальное представление DOM
+• State - состояние компонента
+• Props - свойства компонента
+
+Преимущества React:
+- Компонентный подход
+- Высокая производительность
+- Большая экосистема
+- Активное сообщество
+
+Простой компонент:
+function Welcome(props) {
+  return <h1>Привет, {props.name}!</h1>;
+}`,
+              duration: 20,
+              completed: false,
+              type: 'theory'
+            }
+          ]
+        }
+      ]
     },
     {
       id: 4,
-      name: 'Java',
-      description: 'Объектно-ориентированный язык',
-      lessons: 35,
-      difficulty: 'Средний',
-      color: ['#ed8b00', '#5382a1'],
+      title: 'Java программирование',
+      description: 'Изучите объектно-ориентированное программирование на Java',
       icon: 'cafe-outline',
-      category: 'Системное программирование'
+      color: ['#ed8b00', '#5382a1'],
+      lessons: 22,
+      difficulty: 'Средний',
+      progress: 0,
+      category: 'Программирование',
+      estimatedTime: '7 недель',
+      chapters: [
+        {
+          id: 1,
+          title: 'Основы Java',
+          completed: false,
+          lessons: [
+            {
+              id: 1,
+              title: 'Введение в Java',
+              description: 'Знакомство с языком программирования Java',
+              content: `Java - это объектно-ориентированный язык программирования.
+
+Особенности Java:
+• Платформонезависимость (Write Once, Run Anywhere)
+• Автоматическое управление памятью
+• Строгая типизация
+• Многопоточность
+• Безопасность
+
+Java используется для:
+- Корпоративных приложений
+- Android разработки
+- Веб-приложений
+- Больших данных
+
+Первая программа:
+public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println("Привет, мир!");
+    }
+}`,
+              duration: 18,
+              completed: false,
+              type: 'theory'
+            }
+          ]
+        }
+      ]
     },
     {
       id: 5,
-      name: 'C++',
-      description: 'Системное программирование',
-      lessons: 40,
-      difficulty: 'Сложный',
-      color: ['#00599c', '#004482'],
-      icon: 'terminal-outline',
-      category: 'Системное программирование'
-    },
-    {
-      id: 6,
-      name: 'Swift',
-      description: 'Разработка для iOS',
-      lessons: 22,
-      difficulty: 'Средний',
-      color: ['#fa7343', '#ff8c00'],
-      icon: 'logo-apple',
-      category: 'Мобильная разработка'
-    },
-    {
-      id: 7,
-      name: 'Kotlin',
-      description: 'Современный язык для Android',
-      lessons: 28,
-      difficulty: 'Средний',
-      color: ['#7f52ff', '#b936ee'],
-      icon: 'logo-android',
-      category: 'Мобильная разработка'
-    },
-    {
-      id: 8,
-      name: 'TypeScript',
-      description: 'JavaScript с типизацией',
-      lessons: 18,
-      difficulty: 'Средний',
-      color: ['#3178c6', '#235a97'],
-      icon: 'code-outline',
-      category: 'Веб-разработка'
-    },
-    {
-      id: 9,
-      name: 'Go',
-      description: 'Язык от Google',
-      lessons: 24,
-      difficulty: 'Средний',
-      color: ['#00add8', '#007d9c'],
-      icon: 'planet-outline',
-      category: 'Системное программирование'
-    },
-    {
-      id: 10,
-      name: 'Rust',
-      description: 'Безопасное системное программирование',
-      lessons: 32,
-      difficulty: 'Сложный',
-      color: ['#ce422b', '#a33d2a'],
-      icon: 'construct-outline',
-      category: 'Системное программирование'
-    },
-    {
-      id: 11,
-      name: 'Node.js',
-      description: 'JavaScript на сервере',
-      lessons: 26,
-      difficulty: 'Средний',
-      color: ['#68a063', '#5d8f57'],
-      icon: 'server-outline',
-      category: 'Веб-разработка'
-    },
-    {
-      id: 12,
-      name: 'Flutter',
-      description: 'Кроссплатформенная разработка',
-      lessons: 30,
-      difficulty: 'Средний',
-      color: ['#02569b', '#0553a4'],
+      title: 'Мобильная разработка',
+      description: 'Создавайте мобильные приложения с React Native',
       icon: 'phone-portrait-outline',
-      category: 'Мобильная разработка'
+      color: ['#61dafb', '#0066cc'],
+      lessons: 16,
+      difficulty: 'Продвинутый',
+      progress: 0,
+      category: 'Мобильная разработка',
+      estimatedTime: '6 недель',
+      chapters: [
+        {
+          id: 1,
+          title: 'Основы React Native',
+          completed: false,
+          lessons: [
+            {
+              id: 1,
+              title: 'Введение в React Native',
+              description: 'Создание кроссплатформенных мобильных приложений',
+              content: `React Native позволяет создавать мобильные приложения используя React.
+
+Преимущества React Native:
+• Один код для iOS и Android
+• Использование JavaScript и React
+• Нативная производительность
+• Горячая перезагрузка
+• Большое сообщество
+
+Основные компоненты:
+- View - контейнер
+- Text - текст
+- ScrollView - прокручиваемый контейнер
+- TouchableOpacity - кнопка
+- Image - изображение
+
+Пример компонента:
+import React from 'react';
+import { View, Text } from 'react-native';
+
+const App = () => {
+  return (
+    <View>
+      <Text>Привет, React Native!</Text>
+    </View>
+  );
+};`,
+              duration: 25,
+              completed: false,
+              type: 'theory'
+            }
+          ]
+        }
+      ]
     }
   ];
 
-  const categories = ['Все', 'Веб-разработка', 'Мобильная разработка', 'Системное программирование', 'Data Science'];
-  const difficulties = ['Все', 'Начинающий', 'Средний', 'Сложный'];
-
-  const filteredLanguages = languages.filter(lang => {
-    const categoryMatch = selectedCategory === 'Все' || lang.category === selectedCategory;
-    const difficultyMatch = selectedDifficulty === 'Все' || lang.difficulty === selectedDifficulty;
-    return categoryMatch && difficultyMatch;
-  });
-
-  // Отладка
-  console.log('Total languages:', languages.length);
-  console.log('Filtered languages:', filteredLanguages.length);
-  console.log('Selected category:', selectedCategory);
-  console.log('Selected difficulty:', selectedDifficulty);
+  // Используем coursesData вместо courses для отображения
+  const displayCourses = coursesData.length > 0 ? coursesData : courses;
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -198,308 +436,207 @@ const LessonsScreen = () => {
         return '#10b981';
       case 'Средний':
         return '#f59e0b';
-      case 'Сложный':
+      case 'Продвинутый':
         return '#ef4444';
       default:
         return '#6b7280';
     }
   };
 
-  const handleLanguagePress = (language: any) => {
-    setSelectedLanguage(language);
-    setShowModal(true);
+  const openCourse = (course: Course) => {
+    setSelectedCourse(course);
+    setShowCourseModal(true);
+  };
+
+  const closeCourseModal = () => {
+    setShowCourseModal(false);
+    setSelectedCourse(null);
+  };
+
+  const startLesson = (lesson: Lesson) => {
+    setCurrentLesson(lesson);
+    setLessonProgress(0);
+    setIsLessonCompleted(false);
+    setShowLessonModal(true);
     
-    // Анимация появления модального окна
-    Animated.parallel([
-      Animated.timing(modalAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.spring(modalSlideAnim, {
-        toValue: 0,
-        tension: 100,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // Симуляция прогресса урока
+    const progressInterval = setInterval(() => {
+      setLessonProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          setIsLessonCompleted(true);
+          return 100;
+        }
+        return prev + 5; // Увеличиваем скорость прогресса
+      });
+    }, 200); // Уменьшаем интервал для быстрого прогресса
   };
 
-  const closeModal = () => {
-    Animated.parallel([
-      Animated.timing(modalAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(modalSlideAnim, {
-        toValue: 300,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setShowModal(false);
-      setSelectedLanguage(null);
-    });
-  };
-
-  const showResultModalWithAnimation = (data: any) => {
-    setResultData(data);
-    setShowResultModal(true);
+  const completeLesson = async () => {
+    console.log('completeLesson вызвана');
+    console.log('currentLesson:', currentLesson?.title);
+    console.log('selectedCourse:', selectedCourse?.title);
+    console.log('isLessonCompleted:', isLessonCompleted);
     
-    Animated.parallel([
-      Animated.timing(resultModalAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.spring(resultSlideAnim, {
-        toValue: 0,
-        tension: 80,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
+    if (!isLessonCompleted) {
+      Alert.alert(
+        'Внимание',
+        'Сначала завершите чтение урока',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
-  const closeResultModal = () => {
-    Animated.parallel([
-      Animated.timing(resultModalAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(resultSlideAnim, {
-        toValue: 300,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setShowResultModal(false);
-      setResultData(null);
-    });
-  };
+    if (!currentLesson) {
+      Alert.alert('Ошибка', 'Данные урока не найдены');
+      return;
+    }
 
-  const startLessonSimulation = async (language: any) => {
-    closeModal();
-    
-    // Навигация к экрану детального урока
-    navigation.navigate('LessonDetail', {
-      lesson: {
-        id: language.id,
-        title: `Урок ${language.name}`,
-        description: language.description,
-        content: `Добро пожаловать в изучение ${language.name}!\n\nВ этом уроке вы изучите основы ${language.name} и научитесь создавать свои первые программы.\n\nОсновные темы:\n• Синтаксис языка\n• Переменные и типы данных\n• Функции и методы\n• Практические примеры`,
-        difficulty: language.difficulty,
-        category: language.category,
-        completed: false
-      }
-    });
-  };
-
-  const completeAllLessons = async (language: any) => {
-    closeModal();
-    
     try {
-      // Сохраняем прогресс в базу данных
-      await saveLessonProgress(language.id, language.lessons, language.lessons);
+      console.log('Сохраняем прогресс урока...');
+      await saveLessonProgress(
+        1, // userId
+        currentLesson.id,
+        selectedCourse?.title || 'Неизвестный курс',
+        currentLesson.title,
+        currentLesson.duration * 60, // время в секундах
+        100 // score
+      );
       
-      showResultModalWithAnimation({
-        title: '🎉 Поздравляем!',
-        message: `Вы успешно завершили все уроки по ${language.name}!`,
-        details: [
-          `✅ Изучено уроков: ${language.lessons}`,
-          `📈 Уровень: ${language.difficulty}`,
-          `🏆 Категория: ${language.category}`,
-          '🎯 Прогресс: 100%'
-        ],
-        actions: [
+      // Помечаем урок как завершенный в локальном состоянии
+      if (selectedCourse) {
+        // Обновляем selectedCourse
+        const updatedSelectedCourse = { ...selectedCourse };
+        updatedSelectedCourse.chapters.forEach(chapter => {
+          chapter.lessons.forEach(lesson => {
+            if (lesson.id === currentLesson.id) {
+              lesson.completed = true;
+            }
+          });
+        });
+        setSelectedCourse(updatedSelectedCourse);
+        
+        // Обновляем основной список курсов
+        const updatedCoursesData = coursesData.map(course => {
+          if (course.id === selectedCourse.id) {
+            const updatedCourse = { ...course };
+            updatedCourse.chapters.forEach(chapter => {
+              chapter.lessons.forEach(lesson => {
+                if (lesson.id === currentLesson.id) {
+                  lesson.completed = true;
+                }
+              });
+            });
+            
+            // Пересчитываем прогресс курса
+            const totalLessons = updatedCourse.chapters.reduce((total, chapter) => 
+              total + chapter.lessons.length, 0
+            );
+            const completedLessons = updatedCourse.chapters.reduce((total, chapter) => 
+              total + chapter.lessons.filter(lesson => lesson.completed).length, 0
+            );
+            updatedCourse.progress = Math.round((completedLessons / totalLessons) * 100);
+            
+            return updatedCourse;
+          }
+          return course;
+        });
+        setCoursesData(updatedCoursesData);
+      }
+      
+      console.log('Прогресс сохранен успешно');
+      Alert.alert(
+        'Урок завершен! ✅',
+        `Вы успешно завершили урок "${currentLesson.title}"\n\nУрок добавлен в вашу статистику.`,
+        [
           {
-            title: 'Продолжить изучение',
-            action: closeResultModal
-          },
-          {
-            title: 'Выбрать новый язык',
-            action: () => {
-              closeResultModal();
-              // Можно добавить логику для сброса фильтров или перехода к другому языку
+            text: 'Продолжить',
+            onPress: () => {
+              console.log('Закрываем модальное окно урока');
+              setShowLessonModal(false);
+              setCurrentLesson(null);
+              setLessonProgress(0);
+              setIsLessonCompleted(false);
             }
           }
         ]
-      });
+      );
     } catch (error) {
-      Alert.alert('Ошибка', 'Не удалось сохранить прогресс');
+      console.error('Ошибка сохранения прогресса:', error);
+      Alert.alert('Ошибка', 'Не удалось сохранить прогресс урока. Попробуйте еще раз.');
     }
   };
 
-  const AnimatedLanguageCard = ({ language, index }: { language: any, index: number }) => {
-    console.log('Rendering card for:', language.name);
-    
+  const closeLessonModal = () => {
+    setShowLessonModal(false);
+    setCurrentLesson(null);
+    setLessonProgress(0);
+    setIsLessonCompleted(false);
+  };
+
+  const renderCourseCard = (course: Course, index: number) => {
     return (
-      <View style={styles.languageCard}>
+      <Animated.View
+        key={course.id}
+        style={[
+          styles.courseCard,
+          {
+            opacity: fadeAnim,
+            transform: [
+              {
+                translateY: slideAnim.interpolate({
+                  inputRange: [0, 50],
+                  outputRange: [0, 50],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <TouchableOpacity
-          onPress={() => handleLanguagePress(language)}
-          activeOpacity={0.9}
+          onPress={() => openCourse(course)}
+          activeOpacity={0.8}
         >
           <LinearGradient
-            colors={language.color || ['#6366f1', '#8b5cf6']}
-            style={styles.cardGradient}
+            colors={course.color}
+            style={styles.courseGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <View style={styles.cardContent}>
-              <View style={styles.cardHeader}>
-                <View style={styles.iconContainer}>
-                  <Ionicons 
-                    name={language.icon as any || 'code-outline'} 
-                    size={32} 
-                    color="white" 
-                  />
+            <View style={styles.courseHeader}>
+              <View style={styles.courseIconContainer}>
+                <Ionicons name={course.icon as any} size={32} color="white" />
+              </View>
+              <View style={styles.courseDifficulty}>
+                <Text style={styles.difficultyText}>{course.difficulty}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.courseContent}>
+              <Text style={styles.courseTitle}>{course.title}</Text>
+              <Text style={styles.courseDescription}>{course.description}</Text>
+              
+              <View style={styles.courseStats}>
+                <View style={styles.statItem}>
+                  <Ionicons name="book-outline" size={16} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.statText}>{course.lessons} уроков</Text>
                 </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.languageName}>{language.name}</Text>
-                  <Text style={styles.languageDescription}>{language.description}</Text>
-                  <Text style={styles.categoryText}>{language.category}</Text>
+                <View style={styles.statItem}>
+                  <Ionicons name="time-outline" size={16} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.statText}>{course.estimatedTime}</Text>
                 </View>
               </View>
               
-              <View style={styles.cardFooter}>
-                <View style={styles.statItem}>
-                  <Ionicons name="book-outline" size={16} color="rgba(255,255,255,0.8)" />
-                  <Text style={styles.statText}>{language.lessons} уроков</Text>
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                  <View 
+                    style={[
+                      styles.progressFill, 
+                      { width: `${course.progress}%` }
+                    ]} 
+                  />
                 </View>
-                
-                <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(language.difficulty) }]}>
-                  <Text style={styles.difficultyText}>{language.difficulty}</Text>
-                </View>
-                
-                <TouchableOpacity style={styles.playButton}>
-                  <Ionicons name="play" size={20} color="white" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  const AnimatedFilterButton = ({ title, isSelected, onPress, index }: { 
-    title: string, 
-    isSelected: boolean, 
-    onPress: () => void,
-    index: number 
-  }) => {
-    return (
-      <TouchableOpacity
-        style={[
-          styles.filterButton,
-          isSelected && styles.filterButtonSelected
-        ]}
-        onPress={onPress}
-        activeOpacity={0.8}
-      >
-        <Text style={[
-          styles.filterButtonText,
-          isSelected && styles.filterButtonTextSelected
-        ]}>
-          {title}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
-  // Компонент анимированной кнопки действия
-  const AnimatedActionButton = ({ 
-    icon, 
-    title, 
-    description, 
-    color, 
-    onPress, 
-    index 
-  }: { 
-    icon: string, 
-    title: string, 
-    description: string, 
-    color: string[], 
-    onPress: () => void,
-    index: number 
-  }) => {
-    const buttonScale = useRef(new Animated.Value(1)).current;
-    const buttonGlow = useRef(new Animated.Value(0)).current;
-    
-    const animatePress = () => {
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(buttonScale, {
-            toValue: 0.95,
-            duration: 100,
-            useNativeDriver: true,
-          }),
-          Animated.timing(buttonScale, {
-            toValue: 1,
-            duration: 100,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.timing(buttonGlow, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        buttonGlow.setValue(0);
-      });
-    };
-
-    return (
-      <Animated.View
-        style={{
-          opacity: modalAnim,
-          transform: [
-            {
-              translateY: modalAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [50 + index * 20, 0],
-              })
-            },
-            {
-              scale: modalAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.8, 1],
-              })
-            },
-            { scale: buttonScale }
-          ],
-        }}
-      >
-        <TouchableOpacity
-          style={styles.actionButtonContainer}
-          onPress={() => {
-            animatePress();
-            setTimeout(onPress, 150);
-          }}
-          activeOpacity={0.9}
-        >
-          <LinearGradient
-            colors={color}
-            style={styles.actionButtonGradient}
-          >
-            <Animated.View style={[styles.actionButtonGlow, {
-              opacity: buttonGlow,
-              backgroundColor: 'rgba(255,255,255,0.3)'
-            }]} />
-            
-            <View style={styles.actionButtonContent}>
-              <View style={styles.actionButtonIcon}>
-                <Ionicons name={icon as any} size={24} color="white" />
-              </View>
-              <View style={styles.actionButtonText}>
-                <Text style={styles.actionButtonTitle}>{title}</Text>
-                <Text style={styles.actionButtonDescription}>{description}</Text>
-              </View>
-              <View style={styles.actionButtonArrow}>
-                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.progressText}>{course.progress}%</Text>
               </View>
             </View>
           </LinearGradient>
@@ -508,344 +645,207 @@ const LessonsScreen = () => {
     );
   };
 
-  // Компонент модального окна
-  const renderLanguageModal = () => {
-    if (!selectedLanguage || !showModal) return null;
-
-    const language = selectedLanguage as any;
+  const renderCourseModal = () => {
+    if (!selectedCourse) return null;
 
     return (
-      <Modal visible={showModal} transparent animationType="none">
-        <Animated.View style={[styles.modalOverlay, {
-          opacity: modalAnim,
-        }]}>
+      <Modal
+        visible={showCourseModal}
+        transparent
+        animationType="slide"
+        onRequestClose={closeCourseModal}
+      >
+        <View style={styles.modalOverlay}>
           <TouchableOpacity 
-            style={styles.modalBackdrop} 
-            activeOpacity={1} 
-            onPress={closeModal}
+            style={styles.modalBackground}
+            onPress={closeCourseModal}
+            activeOpacity={1}
           />
           
-          <Animated.View style={[styles.modalContainer, {
-            opacity: modalAnim,
-            transform: [{ translateY: modalSlideAnim }]
-          }]}>
-            <LinearGradient
-              colors={language.color}
-              style={styles.modalGradient}
-            >
-              {/* Заголовок модального окна */}
-              <Animated.View style={[styles.modalHeader, {
-                opacity: modalAnim,
-                transform: [{
-                  scale: modalAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.8, 1],
-                  })
-                }]
-              }]}>
-                <TouchableOpacity onPress={closeModal} style={styles.modalCloseButton}>
-                  <Ionicons name="close" size={24} color="white" />
-                </TouchableOpacity>
-                
-                <View style={styles.modalIconContainer}>
-                  <Animated.View style={{
-                    transform: [{
-                      rotate: modalAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0deg', '360deg'],
-                      })
-                    }]
-                  }}>
-                    <Ionicons name={language.icon as any} size={48} color="white" />
-                  </Animated.View>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{selectedCourse.title}</Text>
+              <TouchableOpacity onPress={closeCourseModal}>
+                <Ionicons name="close" size={24} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {selectedCourse.chapters.map((chapter) => (
+                <View key={chapter.id} style={styles.chapterContainer}>
+                  <Text style={styles.chapterTitle}>{chapter.title}</Text>
+                  
+                  {chapter.lessons.map((lesson) => (
+                    <TouchableOpacity
+                      key={lesson.id}
+                      style={styles.lessonItem}
+                      onPress={() => {
+                        if (lesson.type === 'test') {
+                          closeCourseModal();
+                          navigation.navigate('QuizDetail', { 
+                            lesson, 
+                            course: selectedCourse 
+                          });
+                        } else {
+                          startLesson(lesson);
+                        }
+                      }}
+                    >
+                      <View style={styles.lessonIcon}>
+                        <Ionicons 
+                          name={
+                            lesson.type === 'test' ? 'help-circle' :
+                            lesson.type === 'practice' ? 'code' : 'book'
+                          } 
+                          size={20} 
+                          color="#6366f1" 
+                        />
+                      </View>
+                      
+                      <View style={styles.lessonContent}>
+                        <Text style={styles.lessonTitle}>{lesson.title}</Text>
+                        <Text style={styles.lessonDescription}>{lesson.description}</Text>
+                        <View style={styles.lessonMeta}>
+                          <Text style={styles.lessonDuration}>{lesson.duration} мин</Text>
+                          <Text style={styles.lessonType}>
+                            {lesson.type === 'test' ? 'Тест' : 
+                             lesson.type === 'practice' ? 'Практика' : 'Теория'}
+                          </Text>
+                        </View>
+                      </View>
+                      
+                      <View style={styles.lessonStatus}>
+                        {lesson.completed ? (
+                          <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+                        ) : (
+                          <Ionicons name="play-circle" size={24} color="#6366f1" />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                
-                <Text style={styles.modalTitle}>{language.name}</Text>
-                <Text style={styles.modalSubtitle}>{language.description}</Text>
-                
-                <View style={styles.modalStats}>
-                  <View style={styles.modalStatItem}>
-                    <Ionicons name="book-outline" size={16} color="rgba(255,255,255,0.8)" />
-                    <Text style={styles.modalStatText}>{language.lessons} уроков</Text>
-                  </View>
-                  <View style={styles.modalStatItem}>
-                    <Ionicons name="trending-up-outline" size={16} color="rgba(255,255,255,0.8)" />
-                    <Text style={styles.modalStatText}>{language.difficulty}</Text>
-                  </View>
-                  <View style={styles.modalStatItem}>
-                    <Ionicons name="folder-outline" size={16} color="rgba(255,255,255,0.8)" />
-                    <Text style={styles.modalStatText}>{language.category}</Text>
-                  </View>
-                </View>
-              </Animated.View>
-
-              {/* Кнопки действий */}
-              <View style={styles.modalActions}>
-                <AnimatedActionButton
-                  icon="rocket-outline"
-                  title="Интерактивный урок"
-                  description="Пошаговое изучение с практикой"
-                  color={['rgba(16,185,129,0.9)', 'rgba(5,150,105,0.9)']}
-                  onPress={() => startLessonSimulation(language)}
-                  index={0}
-                />
-                
-                <AnimatedActionButton
-                  icon="flash-outline"
-                  title="Быстрое изучение"
-                  description="Изучить основы за несколько минут"
-                  color={['rgba(59,130,246,0.9)', 'rgba(37,99,235,0.9)']}
-                  onPress={() => startLessonSimulation(language)}
-                  index={1}
-                />
-                
-                <AnimatedActionButton
-                  icon="trophy-outline"
-                  title="Пройти все уроки"
-                  description="Полное изучение курса (турбо режим)"
-                  color={['rgba(245,158,11,0.9)', 'rgba(217,119,6,0.9)']}
-                  onPress={() => completeAllLessons(language)}
-                  index={2}
-                />
-              </View>
-            </LinearGradient>
-          </Animated.View>
-        </Animated.View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
-         );
-   };
+    );
+  };
 
-   // Компонент модального окна результатов
-   const renderResultModal = () => {
-     if (!resultData || !showResultModal) return null;
+  const renderLessonModal = () => {
+    if (!currentLesson) return null;
 
-     const data = resultData as any;
-     const isConfirm = data.type === 'confirm_turbo';
-     const isCompleted = data.type === 'course_completed';
+    return (
+      <Modal
+        visible={showLessonModal}
+        animationType="slide"
+        onRequestClose={closeLessonModal}
+      >
+        <SafeAreaView style={styles.lessonModalContainer}>
+          <View style={styles.lessonHeader}>
+            <TouchableOpacity onPress={closeLessonModal}>
+              <Ionicons name="close" size={24} color="#6b7280" />
+            </TouchableOpacity>
+            <Text style={styles.lessonHeaderTitle}>{currentLesson.title}</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          
+          <View style={styles.lessonProgressContainer}>
+            <View style={styles.lessonProgressBar}>
+              <View 
+                style={[
+                  styles.lessonProgressFill, 
+                  { width: `${lessonProgress}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.lessonProgressText}>{lessonProgress}%</Text>
+          </View>
 
-     return (
-       <Modal visible={showResultModal} transparent animationType="none">
-         <Animated.View style={[styles.modalOverlay, {
-           opacity: resultModalAnim,
-           backgroundColor: 'rgba(0,0,0,0.6)',
-         }]}>
-           <TouchableOpacity 
-             style={styles.modalBackdrop} 
-             activeOpacity={1} 
-             onPress={closeResultModal}
-           />
-           
-           <Animated.View style={[styles.resultModalContainer, {
-             opacity: resultModalAnim,
-             transform: [{ translateY: resultSlideAnim }]
-           }]}>
-             <LinearGradient
-               colors={data.language.color}
-               style={styles.resultModalGradient}
-             >
-               {/* Конфетти или эффекты */}
-               <Animated.View style={[styles.resultEffect, {
-                 opacity: resultModalAnim,
-                 transform: [{
-                   scale: resultModalAnim.interpolate({
-                     inputRange: [0, 1],
-                     outputRange: [0, 1],
-                   })
-                 }]
-               }]}>
-                 <Text style={styles.resultEmoji}>
-                   {isCompleted ? '🎉✨🏆✨🎉' : isConfirm ? '⚡💨⚡💨⚡' : '🎯📚🎯📚🎯'}
-                 </Text>
-               </Animated.View>
-
-               {/* Заголовок */}
-               <Animated.View style={[styles.resultHeader, {
-                 opacity: resultModalAnim,
-                 transform: [{
-                   scale: resultModalAnim.interpolate({
-                     inputRange: [0, 1],
-                     outputRange: [0.5, 1],
-                   })
-                 }]
-               }]}>
-                 <TouchableOpacity onPress={closeResultModal} style={styles.modalCloseButton}>
-                   <Ionicons name="close" size={20} color="white" />
-                 </TouchableOpacity>
-                 
-                 <Text style={styles.resultTitle}>{data.title}</Text>
-                 <Text style={styles.resultMessage}>{data.message}</Text>
-                 
-                 {data.details.length > 0 && (
-                   <View style={styles.resultDetails}>
-                     {data.details.map((detail: string, index: number) => (
-                       <Animated.View
-                         key={index}
-                         style={{
-                           opacity: resultModalAnim,
-                           transform: [{
-                             translateY: resultModalAnim.interpolate({
-                               inputRange: [0, 1],
-                               outputRange: [20, 0],
-                             })
-                           }]
-                         }}
-                       >
-                         <Text style={styles.resultDetailText}>{detail}</Text>
-                       </Animated.View>
-                     ))}
-                   </View>
-                 )}
-               </Animated.View>
-
-               {/* Кнопки действий */}
-               <View style={styles.resultActions}>
-                 {data.actions.map((action: any, index: number) => (
-                   <Animated.View
-                     key={index}
-                     style={{
-                       opacity: resultModalAnim,
-                       transform: [
-                         {
-                           translateY: resultModalAnim.interpolate({
-                             inputRange: [0, 1],
-                             outputRange: [30 + index * 10, 0],
-                           })
-                         },
-                         {
-                           scale: resultModalAnim.interpolate({
-                             inputRange: [0, 1],
-                             outputRange: [0.8, 1],
-                           })
-                         }
-                       ],
-                     }}
-                   >
-                     <TouchableOpacity
-                       style={[
-                         styles.resultActionButton,
-                         index === 0 && data.actions.length > 1 ? styles.secondaryButton : styles.primaryButton
-                       ]}
-                       onPress={action.action}
-                       activeOpacity={0.8}
-                     >
-                       <LinearGradient
-                         colors={
-                           index === 0 && data.actions.length > 1 
-                             ? ['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']
-                             : ['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.2)']
-                         }
-                         style={styles.resultButtonGradient}
-                       >
-                         <Text style={[
-                           styles.resultButtonText,
-                           index === 0 && data.actions.length > 1 && styles.secondaryButtonText
-                         ]}>
-                           {action.title}
-                         </Text>
-                       </LinearGradient>
-                     </TouchableOpacity>
-                   </Animated.View>
-                 ))}
-               </View>
-             </LinearGradient>
-           </Animated.View>
-         </Animated.View>
-       </Modal>
-     );
-   };
-
-  console.log('=== ABOUT TO RENDER COMPONENT ===');
+          <ScrollView style={styles.lessonContentContainer}>
+            <Text style={styles.lessonContentText}>{currentLesson.content}</Text>
+            
+            {!isLessonCompleted && lessonProgress < 100 && (
+              <View style={styles.readingHint}>
+                <Ionicons name="information-circle" size={20} color="#6366f1" />
+                <Text style={styles.readingHintText}>
+                  Читайте материал, прогресс обновляется автоматически
+                </Text>
+              </View>
+            )}
+            
+            {!isLessonCompleted && lessonProgress > 50 && (
+              <TouchableOpacity 
+                style={styles.skipButton}
+                onPress={() => {
+                  console.log('Нажата кнопка "Завершить чтение"');
+                  console.log('Текущий прогресс:', lessonProgress);
+                  setLessonProgress(100);
+                  setIsLessonCompleted(true);
+                  console.log('Урок помечен как завершенный');
+                }}
+              >
+                <Ionicons name="play-forward" size={16} color="#6366f1" />
+                <Text style={styles.skipButtonText}>Завершить чтение</Text>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+          
+          <View style={styles.lessonFooter}>
+            {isLessonCompleted ? (
+              <TouchableOpacity 
+                style={styles.completeButton}
+                onPress={() => {
+                  console.log('Нажата кнопка "Завершить урок"');
+                  completeLesson();
+                }}
+              >
+                <Ionicons name="checkmark-circle" size={20} color="white" />
+                <Text style={styles.completeButtonText}>Завершить урок</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.progressInfo}>
+                <Text style={styles.progressInfoText}>
+                  Прогресс чтения: {lessonProgress}%
+                </Text>
+                <Text style={styles.progressSubtext}>
+                  {lessonProgress < 50 
+                    ? 'Продолжайте читать...' 
+                    : 'Нажмите "Завершить чтение" выше'
+                  }
+                </Text>
+                {lessonProgress >= 100 && !isLessonCompleted && (
+                  <Text style={[styles.progressSubtext, { color: '#ef4444' }]}>
+                    Ошибка: прогресс 100%, но урок не завершен
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#6366f1', '#8b5cf6']}
-        style={styles.header}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Уроки программирования</Text>
+        <Text style={styles.headerSubtitle}>Выберите курс для изучения</Text>
+      </View>
+      
+      <ScrollView 
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
       >
-        <View>
-          <Text style={styles.title}>Уроки программирования</Text>
-          <Text style={styles.subtitle}>Выберите язык для изучения</Text>
-          
-          <View style={styles.statsContainer}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{filteredLanguages.length}</Text>
-              <Text style={styles.statLabel}>языков</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>300+</Text>
-              <Text style={styles.statLabel}>уроков</Text>
-            </View>
-          </View>
+        <View style={styles.coursesContainer}>
+          {displayCourses.map((course, index) => renderCourseCard(course, index))}
         </View>
-      </LinearGradient>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Простые кнопки фильтров для тестирования */}
-        <View style={styles.filtersSection}>
-          <Text style={styles.filterTitle}>Категория: {selectedCategory}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20 }}>
-            {categories.map((category, index) => (
-              <TouchableOpacity
-                key={category}
-                style={[
-                  styles.simpleFilterButton,
-                  selectedCategory === category && styles.simpleFilterButtonSelected
-                ]}
-                onPress={() => {
-                  console.log('Selecting category:', category);
-                  setSelectedCategory(category);
-                }}
-              >
-                <Text style={[
-                  styles.simpleFilterText,
-                  selectedCategory === category && styles.simpleFilterTextSelected
-                ]}>
-                  {category}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Простые карточки для тестирования */}
-        <View style={styles.languagesList}>
-          <Text style={styles.debugText}>
-            Всего языков: {languages.length}, Отфильтровано: {filteredLanguages.length}
-          </Text>
-          
-          {filteredLanguages.map((language, index) => (
-            <View key={language.id} style={styles.simpleCard}>
-              <Text style={styles.simpleCardTitle}>{language.name}</Text>
-              <Text style={styles.simpleCardText}>{language.description}</Text>
-              <Text style={styles.simpleCardText}>Уроков: {language.lessons}</Text>
-              <Text style={styles.simpleCardText}>Сложность: {language.difficulty}</Text>
-              <Text style={styles.simpleCardText}>Категория: {language.category}</Text>
-              <TouchableOpacity 
-                style={styles.simpleButton}
-                onPress={() => {
-                  console.log('Pressed:', language.name);
-                  handleLanguagePress(language);
-                }}
-              >
-                <Text style={styles.simpleButtonText}>Изучать</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-          
-          {filteredLanguages.length === 0 && (
-            <View style={styles.noResultsContainer}>
-              <Text style={styles.noResultsText}>Нет языков для отображения</Text>
-              <Text style={styles.noResultsSubtext}>Выбрана категория: {selectedCategory}</Text>
-            </View>
-          )}
-        </View>
-        
-        <View style={styles.bottomPadding} />
       </ScrollView>
-
-      {renderLanguageModal()}
-      {renderResultModal()}
-    </View>
+      
+      {renderCourseModal()}
+      {renderLessonModal()}
+    </SafeAreaView>
   );
 };
 
@@ -855,540 +855,316 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   header: {
-    paddingTop: 60,
-    paddingBottom: 30,
     paddingHorizontal: 20,
-    alignItems: 'center',
+    paddingVertical: 20,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
   },
-  title: {
+  headerTitle: {
     fontSize: 28,
-    color: 'white',
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
+    color: '#1e293b',
+    marginBottom: 4,
   },
-  subtitle: {
+  headerSubtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    marginTop: 20,
-  },
-  statCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 15,
-    alignItems: 'center',
-    minWidth: 80,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 2,
+    color: '#64748b',
   },
   content: {
     flex: 1,
   },
-  languageCard: {
-    borderRadius: 20,
-    marginBottom: 16,
+  coursesContainer: {
+    padding: 20,
+    gap: 16,
+  },
+  courseCard: {
+    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  cardGradient: {
-    padding: 24,
-    minHeight: 140,
-  },
-  cardContent: {
-    flex: 1,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  iconContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 20,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
   },
-  cardInfo: {
-    flex: 1,
+  courseGradient: {
+    padding: 20,
+    minHeight: 200,
   },
-  languageName: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 6,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  languageDescription: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.9)',
-    marginBottom: 6,
-    lineHeight: 20,
-  },
-  categoryText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  cardFooter: {
+  courseHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
+    alignItems: 'flex-start',
+    marginBottom: 16,
   },
-  statsContainer: {
-    flexDirection: 'row',
+  courseIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  courseDifficulty: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  difficultyText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  courseContent: {
     flex: 1,
+  },
+  courseTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+  },
+  courseDescription: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  courseStats: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
+    gap: 6,
   },
   statText: {
-    fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
-    marginLeft: 4,
-  },
-  difficultyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  difficultyText: {
     fontSize: 12,
-    color: 'white',
-    fontWeight: '600',
   },
-  playButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  bottomPadding: {
-    height: 100,
-  },
-  filtersSection: {
-    marginBottom: 20,
-    paddingTop: 20,
-  },
-  filterTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 10,
-    marginTop: 10,
-    paddingHorizontal: 20,
-  },
-  filterScroll: {
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  languagesList: {
-    paddingHorizontal: 20,
-  },
-  noResultsContainer: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  noResultsText: {
-    fontSize: 18,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginTop: 16,
-    fontWeight: '600',
-  },
-  noResultsSubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 10,
-    backgroundColor: '#f3f4f6',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  filterButtonSelected: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
-  },
-  filterButtonText: {
-    fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  filterButtonTextSelected: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  // Простые стили для отладки
-  debugText: {
-    fontSize: 14,
-    color: '#ef4444',
-    backgroundColor: '#fef2f2',
-    padding: 8,
-    marginBottom: 8,
-    borderRadius: 8,
-    textAlign: 'center',
-    marginHorizontal: 20,
-  },
-  simpleCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    marginHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  simpleCardTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 8,
-  },
-  simpleCardText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-  simpleButton: {
-    backgroundColor: '#6366f1',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-    marginTop: 8,
-  },
-  simpleButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  simpleFilterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
-    backgroundColor: '#f3f4f6',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  simpleFilterButtonSelected: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
-  },
-  simpleFilterText: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  simpleFilterTextSelected: {
-    color: 'white',
-    fontWeight: '600',
-  },
-
-    
-  ratingContainer: {
+  progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    gap: 12,
   },
-  ratingText: {
+  progressBar: {
+    flex: 1,
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 3,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: 'white',
+    borderRadius: 3,
+  },
+  progressText: {
     color: 'white',
     fontSize: 12,
-    fontWeight: 'bold',
-    marginLeft: 4,
+    fontWeight: '600',
   },
-
-  // Стили модального окна
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
-  modalBackdrop: {
+  modalBackground: {
     flex: 1,
   },
-  modalContainer: {
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     maxHeight: '80%',
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 20,
-  },
-  modalGradient: {
-    flex: 1,
+    minHeight: '50%',
   },
   modalHeader: {
-    padding: 30,
-    paddingBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    position: 'relative',
-  },
-  modalCloseButton: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  modalIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
   },
   modalTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-    marginBottom: 8,
+    color: '#1e293b',
   },
-  modalSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  modalStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 15,
-  },
-  modalStatItem: {
-    alignItems: 'center',
+  modalBody: {
     flex: 1,
-  },
-  modalStatText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.9)',
-    fontWeight: '600',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  modalActions: {
     padding: 20,
-    paddingTop: 10,
-    gap: 12,
   },
-  actionButtonContainer: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 8,
+  chapterContainer: {
+    marginBottom: 24,
   },
-  actionButtonGradient: {
-    position: 'relative',
-  },
-  actionButtonGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 16,
-  },
-  actionButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  actionButtonIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  actionButtonText: {
-    flex: 1,
-  },
-  actionButtonTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 2,
-  },
-  actionButtonDescription: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
-  },
-  actionButtonArrow: {
-    marginLeft: 8,
-  },
-  actionButtonArrow: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Стили модального окна результатов
-  resultModalContainer: {
-    marginHorizontal: 20,
-    marginVertical: 60,
-    borderRadius: 25,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 25,
-  },
-  resultModalGradient: {
-    paddingVertical: 40,
-    paddingHorizontal: 30,
-    alignItems: 'center',
-  },
-  resultEffect: {
-    marginBottom: 20,
-  },
-  resultEmoji: {
-    fontSize: 32,
-    textAlign: 'center',
-    letterSpacing: 4,
-  },
-  resultHeader: {
-    alignItems: 'center',
-    marginBottom: 30,
-    position: 'relative',
-    width: '100%',
-  },
-  resultTitle: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
+  chapterTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
     marginBottom: 12,
   },
-  resultMessage: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 22,
-  },
-  resultDetails: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 15,
+  lessonItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
-    width: '100%',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    marginBottom: 8,
   },
-  resultDetailText: {
+  lessonIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#e0e7ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  lessonContent: {
+    flex: 1,
+  },
+  lessonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  lessonDescription: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
+    color: '#64748b',
     marginBottom: 6,
-    fontWeight: '500',
   },
-  resultActions: {
-    width: '100%',
+  lessonMeta: {
+    flexDirection: 'row',
     gap: 12,
   },
-  resultActionButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
+  lessonDuration: {
+    fontSize: 12,
+    color: '#6366f1',
+    fontWeight: '500',
   },
-  primaryButton: {
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
+  lessonType: {
+    fontSize: 12,
+    color: '#64748b',
   },
-  secondaryButton: {
-    opacity: 0.8,
+  lessonStatus: {
+    marginLeft: 12,
   },
-  resultButtonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+  lessonModalContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  lessonHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
   },
-  resultButtonText: {
+  lessonHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  lessonProgressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#f8fafc',
+    gap: 12,
+  },
+  lessonProgressBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 4,
+  },
+  lessonProgressFill: {
+    height: '100%',
+    backgroundColor: '#6366f1',
+    borderRadius: 4,
+  },
+  lessonProgressText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6366f1',
+  },
+  lessonContentContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  lessonContentText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: 'white',
+    lineHeight: 24,
+    color: '#374151',
   },
-  secondaryButtonText: {
-    opacity: 0.8,
+  lessonFooter: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  completeButton: {
+    backgroundColor: '#10b981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  completeButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  progressInfo: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  progressInfoText: {
+    fontSize: 16,
+    color: '#64748b',
+  },
+  readingHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    marginTop: 16,
+    gap: 8,
+  },
+  readingHintText: {
+    fontSize: 14,
+    color: '#64748b',
+    flex: 1,
+  },
+  skipButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e0e7ff',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    gap: 6,
+  },
+  skipButtonText: {
+    fontSize: 14,
+    color: '#6366f1',
+    fontWeight: '600',
+  },
+  progressSubtext: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+    marginTop: 4,
   },
 });
 

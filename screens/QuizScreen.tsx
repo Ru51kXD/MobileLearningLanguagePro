@@ -47,7 +47,8 @@ interface RouteParams {
 const QuizScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { quiz, lesson, course } = route.params as RouteParams;
+  const params = route.params as RouteParams || {};
+  const { quiz, lesson, course } = params;
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
@@ -137,18 +138,18 @@ const QuizScreen = () => {
   const totalQuestions = currentQuiz.questions.length;
 
   useEffect(() => {
-    Animated.parallel([
+      Animated.parallel([
       Animated.timing(fadeAnim, {
-        toValue: 1,
+            toValue: 1,
         duration: 500,
-        useNativeDriver: true,
-      }),
+            useNativeDriver: true,
+          }),
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 500,
-        useNativeDriver: true,
-      }),
-    ]).start();
+          useNativeDriver: true,
+        }),
+      ]).start();
   }, []);
 
   useEffect(() => {
@@ -216,7 +217,7 @@ const QuizScreen = () => {
         1, // userId
         currentQuiz.id,
         currentQuiz.title,
-        correctAnswers,
+        correctAnswers, // правильные ответы
         totalQuestions,
         (currentQuiz.timeLimit || 300) - timeLeft // время, потраченное на тест
       );
@@ -257,7 +258,7 @@ const QuizScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-          <TouchableOpacity
+        <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
@@ -267,9 +268,13 @@ const QuizScreen = () => {
           <View style={styles.placeholder} />
         </Animated.View>
 
-        <ScrollView style={styles.content}>
+        <ScrollView 
+          style={styles.content}
+          contentContainerStyle={styles.scrollContentWithButton}
+          showsVerticalScrollIndicator={false}
+        >
           <Animated.View style={[styles.quizIntro, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <LinearGradient
+          <LinearGradient
               colors={course?.color || ['#6366f1', '#8b5cf6']}
               style={styles.introGradient}
               start={{ x: 0, y: 0 }}
@@ -278,8 +283,8 @@ const QuizScreen = () => {
               <View style={styles.introContent}>
                 <View style={styles.quizIconContainer}>
                   <Ionicons name="help-circle" size={48} color="white" />
-                </View>
-                
+              </View>
+              
                 <Text style={styles.quizTitle}>{currentQuiz.title}</Text>
                 <Text style={styles.quizDescription}>{currentQuiz.description}</Text>
                 
@@ -295,11 +300,11 @@ const QuizScreen = () => {
                   <View style={styles.statItem}>
                     <Ionicons name="trending-up-outline" size={20} color="rgba(255,255,255,0.8)" />
                     <Text style={styles.statText}>{currentQuiz.difficulty}</Text>
-                  </View>
+                </View>
                 </View>
               </View>
             </LinearGradient>
-          </Animated.View>
+                </Animated.View>
 
           <Animated.View style={[styles.instructions, { opacity: fadeAnim }]}>
             <Text style={styles.instructionsTitle}>📋 Инструкции</Text>
@@ -308,7 +313,7 @@ const QuizScreen = () => {
               <Text style={styles.instructionText}>
                 Внимательно читайте каждый вопрос
               </Text>
-            </View>
+              </View>
             <View style={styles.instructionItem}>
               <Ionicons name="checkmark-circle" size={20} color="#10b981" />
               <Text style={styles.instructionText}>
@@ -328,19 +333,19 @@ const QuizScreen = () => {
               </Text>
             </View>
           </Animated.View>
-        </ScrollView>
 
-        <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
-          <TouchableOpacity style={styles.startButton} onPress={startQuiz}>
-            <LinearGradient
-              colors={['#10b981', '#059669']}
-              style={styles.startButtonGradient}
-            >
-              <Ionicons name="play" size={20} color="white" />
-              <Text style={styles.startButtonText}>Начать тест</Text>
+          <Animated.View style={[styles.footerInline, { opacity: fadeAnim }]}>
+            <TouchableOpacity style={styles.startButton} onPress={startQuiz}>
+              <LinearGradient
+                colors={['#10b981', '#059669']}
+                style={styles.startButtonGradient}
+              >
+                <Ionicons name="play" size={20} color="white" />
+                <Text style={styles.startButtonText}>Начать тест</Text>
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -359,7 +364,11 @@ const QuizScreen = () => {
           <View style={styles.placeholder} />
         </Animated.View>
 
-        <ScrollView style={styles.content}>
+        <ScrollView 
+          style={styles.content}
+          contentContainerStyle={styles.scrollContentWithButton}
+          showsVerticalScrollIndicator={false}
+        >
           <Animated.View style={[styles.resultsContainer, { opacity: fadeAnim }]}>
             <LinearGradient
               colors={[getScoreColor(score), getScoreColor(score) + '80']}
@@ -380,8 +389,8 @@ const QuizScreen = () => {
             {currentQuiz.questions.map((question, index) => {
               const isCorrect = selectedAnswers[index] === question.correctAnswer;
               const userAnswer = selectedAnswers[index];
-              
-              return (
+      
+      return (
                 <View key={question.id} style={styles.questionResult}>
                   <View style={styles.questionHeader}>
                     <Text style={styles.questionNumber}>Вопрос {index + 1}</Text>
@@ -414,7 +423,7 @@ const QuizScreen = () => {
                             isUserAnswer && !isCorrectAnswer && styles.wrongAnswerText
                           ]}>
                             {option}
-                          </Text>
+              </Text>
                           {isCorrectAnswer && (
                             <Ionicons name="checkmark" size={16} color="#10b981" />
                           )}
@@ -435,31 +444,31 @@ const QuizScreen = () => {
               );
             })}
           </View>
-        </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.actionButton} onPress={restartQuiz}>
-            <Ionicons name="refresh" size={20} color="#6366f1" />
-            <Text style={styles.actionButtonText}>Пройти снова</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.primaryButton]} 
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="checkmark" size={20} color="white" />
-            <Text style={[styles.actionButtonText, styles.primaryButtonText]}>Завершить</Text>
-          </TouchableOpacity>
-        </View>
+          <Animated.View style={[styles.footerInline, { opacity: fadeAnim }]}>
+                  <TouchableOpacity style={styles.actionButton} onPress={restartQuiz}>
+              <Ionicons name="refresh" size={20} color="#6366f1" />
+              <Text style={styles.actionButtonText}>Пройти снова</Text>
+                  </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.primaryButton]} 
+              onPress={() => navigation.goBack()}
+            >
+                    <Ionicons name="checkmark" size={20} color="white" />
+              <Text style={[styles.actionButtonText, styles.primaryButtonText]}>Завершить</Text>
+                  </TouchableOpacity>
+          </Animated.View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
-
+                
   return (
     <SafeAreaView style={styles.container}>
       <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-        <TouchableOpacity
+                <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => {
+                  onPress={() => {
             Alert.alert(
               'Выйти из теста?',
               'Ваш прогресс будет потерян',
@@ -471,36 +480,40 @@ const QuizScreen = () => {
           }}
         >
           <Ionicons name="close" size={24} color="#6366f1" />
-        </TouchableOpacity>
+                </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {currentQuestionIndex + 1} из {totalQuestions}
         </Text>
         <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
-      </Animated.View>
+              </Animated.View>
 
-      <View style={styles.progressContainer}>
-        <Animated.View 
+          <View style={styles.progressContainer}>
+              <Animated.View 
           style={[
             styles.progressBar,
             {
-              width: progressAnim.interpolate({
-                inputRange: [0, 1],
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 1],
                 outputRange: ['0%', '100%']
-              })
+                  })
             }
           ]} 
-        />
-      </View>
+              />
+          </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.scrollContentWithButton}
+        showsVerticalScrollIndicator={false}
+      >
         <Animated.View style={[styles.questionContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           <Text style={styles.questionTitle}>Вопрос {currentQuestionIndex + 1}</Text>
           <Text style={styles.questionText}>{currentQuestion.question}</Text>
-          
-          <View style={styles.optionsContainer}>
+            
+            <View style={styles.optionsContainer}>
             {currentQuestion.options.map((option, index) => (
               <TouchableOpacity
-                key={index}
+                    key={index}
                 style={[
                   styles.optionButton,
                   selectedAnswers[currentQuestionIndex] === index && styles.selectedOption
@@ -514,54 +527,54 @@ const QuizScreen = () => {
                   {selectedAnswers[currentQuestionIndex] === index && (
                     <Ionicons name="checkmark" size={16} color="white" />
                   )}
-                </View>
+                        </View>
                 <Text style={[
                   styles.optionText,
                   selectedAnswers[currentQuestionIndex] === index && styles.selectedOptionText
                 ]}>
                   {option}
                 </Text>
-              </TouchableOpacity>
+                    </TouchableOpacity>
             ))}
-          </View>
-        </Animated.View>
+            </View>
+          </Animated.View>
+
+        <Animated.View style={[styles.footerInline, { opacity: fadeAnim }]}>
+          <TouchableOpacity 
+            style={[styles.navButton, currentQuestionIndex === 0 && styles.disabledButton]}
+            onPress={previousQuestion}
+            disabled={currentQuestionIndex === 0}
+          >
+            <Ionicons name="chevron-back" size={20} color={currentQuestionIndex === 0 ? "#9ca3af" : "#6366f1"} />
+            <Text style={[styles.navButtonText, currentQuestionIndex === 0 && styles.disabledText]}>
+              Назад
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[
+              styles.navButton, 
+              styles.primaryButton,
+              selectedAnswers[currentQuestionIndex] === -1 && styles.disabledButton
+            ]}
+            onPress={nextQuestion}
+            disabled={selectedAnswers[currentQuestionIndex] === -1}
+          >
+            <Text style={[
+              styles.navButtonText, 
+              styles.primaryButtonText,
+              selectedAnswers[currentQuestionIndex] === -1 && styles.disabledText
+            ]}>
+              {currentQuestionIndex === totalQuestions - 1 ? 'Завершить' : 'Далее'}
+            </Text>
+            <Ionicons 
+              name={currentQuestionIndex === totalQuestions - 1 ? "checkmark" : "chevron-forward"} 
+              size={20} 
+              color={selectedAnswers[currentQuestionIndex] === -1 ? "#9ca3af" : "white"} 
+            />
+          </TouchableOpacity>
+      </Animated.View>
       </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={[styles.navButton, currentQuestionIndex === 0 && styles.disabledButton]}
-          onPress={previousQuestion}
-          disabled={currentQuestionIndex === 0}
-        >
-          <Ionicons name="chevron-back" size={20} color={currentQuestionIndex === 0 ? "#9ca3af" : "#6366f1"} />
-          <Text style={[styles.navButtonText, currentQuestionIndex === 0 && styles.disabledText]}>
-            Назад
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[
-            styles.navButton, 
-            styles.primaryButton,
-            selectedAnswers[currentQuestionIndex] === -1 && styles.disabledButton
-          ]}
-          onPress={nextQuestion}
-          disabled={selectedAnswers[currentQuestionIndex] === -1}
-        >
-          <Text style={[
-            styles.navButtonText, 
-            styles.primaryButtonText,
-            selectedAnswers[currentQuestionIndex] === -1 && styles.disabledText
-          ]}>
-            {currentQuestionIndex === totalQuestions - 1 ? 'Завершить' : 'Далее'}
-          </Text>
-          <Ionicons 
-            name={currentQuestionIndex === totalQuestions - 1 ? "checkmark" : "chevron-forward"} 
-            size={20} 
-            color={selectedAnswers[currentQuestionIndex] === -1 ? "#9ca3af" : "white"} 
-          />
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };
@@ -576,13 +589,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingTop: 80, // Экстремально увеличиваем верхний отступ
+    paddingBottom: 35, // Экстремально увеличиваем нижний отступ
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   backButton: {
-    padding: 5,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
   },
   headerTitle: {
     fontSize: 18,
@@ -590,7 +611,7 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   placeholder: {
-    width: 34,
+    width: 40,
   },
   timerText: {
     fontSize: 16,
@@ -607,6 +628,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 150, // Увеличиваем отступ снизу для кнопки
+  },
+  scrollContentWithButton: {
+    paddingBottom: 30, // Уменьшаем отступ снизу для контента с кнопкой внутри
   },
   quizIntro: {
     margin: 20,
@@ -693,10 +720,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 20,
+    paddingBottom: 50, // Увеличиваем отступ для навигации
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
+    flexDirection: 'row',
+    gap: 12,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  footerInline: {
+    padding: 20,
+    paddingBottom: 10, // Уменьшаем отступ снизу
+    backgroundColor: 'white',
     flexDirection: 'row',
     gap: 12,
   },

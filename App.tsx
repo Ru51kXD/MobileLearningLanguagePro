@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initDatabase } from './database/database';
 
 import HomeScreen from './screens/HomeScreen';
@@ -11,6 +12,10 @@ import LessonsScreen from './screens/LessonsScreen';
 import LessonDetailScreen from './screens/LessonDetailScreen';
 import QuizScreen from './screens/QuizScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import AchievementsScreen from './screens/AchievementsScreen';
+import StatisticsScreen from './screens/StatisticsScreen';
+import SettingsScreen from './screens/SettingsScreen';
+import HelpScreen from './screens/HelpScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -22,6 +27,19 @@ function LessonsStack() {
       <Stack.Screen name="LessonsList" component={LessonsScreen} />
       <Stack.Screen name="LessonDetail" component={LessonDetailScreen} />
       <Stack.Screen name="QuizDetail" component={QuizScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// Стек навигация для профиля
+function ProfileStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="Achievements" component={AchievementsScreen} />
+      <Stack.Screen name="Statistics" component={StatisticsScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Help" component={HelpScreen} />
     </Stack.Navigator>
   );
 }
@@ -44,9 +62,10 @@ export default function App() {
   }, []);
 
   return (
-    <NavigationContainer>
-      <StatusBar style="light" />
-      <Tab.Navigator
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <StatusBar style="light" />
+        <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
             let iconName: keyof typeof Ionicons.glyphMap;
@@ -94,10 +113,11 @@ export default function App() {
         />
         <Tab.Screen 
           name="Profile" 
-          component={ProfileScreen}
+          component={ProfileStack}
           options={{ tabBarLabel: 'Профиль' }}
         />
-      </Tab.Navigator>
-    </NavigationContainer>
+        </Tab.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 } 

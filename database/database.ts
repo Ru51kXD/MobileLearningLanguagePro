@@ -203,15 +203,15 @@ export const getUserStats = async (userId: number): Promise<any> => {
 };
 
 // Улучшенная функция для сохранения результата викторины с временем
-export const saveQuizResult = async (userId: number, quizId: number, quizTitle: string, score: number, totalQuestions: number, timeSpent: number): Promise<void> => {
+export const saveQuizResult = async (userId: number, quizId: number, quizName: string, correctAnswers: number, totalQuestions: number, timeSpent: number): Promise<void> => {
   try {
-    const percentage = Math.round((score / totalQuestions) * 100);
+    const percentage = Math.round((correctAnswers / totalQuestions) * 100);
     const isPerfect = percentage === 100;
     
     // Сохраняем результат викторины
     await db.runAsync(
       'INSERT INTO quiz_results (user_id, quiz_id, quiz_title, score, total_questions, percentage, time_spent, perfect_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [userId, quizId, quizTitle, score, totalQuestions, percentage, timeSpent, isPerfect ? 1 : 0]
+      [userId, quizId, quizName, correctAnswers, totalQuestions, percentage, timeSpent, isPerfect ? 1 : 0]
     );
 
     // Обновляем активность за сегодня
@@ -224,12 +224,12 @@ export const saveQuizResult = async (userId: number, quizId: number, quizTitle: 
     if (existingActivity) {
       await db.runAsync(
         'UPDATE user_activity SET quizzes_completed = quizzes_completed + 1, total_study_time = total_study_time + ?, points_earned = points_earned + ? WHERE user_id = ? AND activity_date = ?',
-        [timeSpent, score * 10, userId, today]
+        [timeSpent, correctAnswers * 10, userId, today]
       );
     } else {
       await db.runAsync(
         'INSERT INTO user_activity (user_id, activity_date, quizzes_completed, total_study_time, points_earned) VALUES (?, ?, 1, ?, ?)',
-        [userId, today, timeSpent, score * 10]
+        [userId, today, timeSpent, correctAnswers * 10]
       );
     }
 
@@ -243,19 +243,19 @@ export const saveQuizResult = async (userId: number, quizId: number, quizTitle: 
 };
 
 // Улучшенная функция для сохранения прогресса урока с временем
-export const saveLessonProgress = async (userId: number, lessonId: number, language: string, lessonTitle: string, timeSpent: number, score: number = 100): Promise<void> => {
+export const saveLessonProgress = async (userId: number, lessonId: number, courseName: string, lessonName: string, timeSpent: number, score: number = 100): Promise<void> => {
   try {
     // Проверяем, не завершен ли уже этот урок
     const existingLesson = await db.getFirstAsync(
       'SELECT id FROM lesson_progress WHERE user_id = ? AND lesson_id = ? AND language = ?',
-      [userId, lessonId, language]
+      [userId, lessonId, courseName]
     );
 
     if (!existingLesson) {
       // Урок еще не завершен, сохраняем прогресс
       await db.runAsync(
         'INSERT INTO lesson_progress (user_id, lesson_id, language, lesson_title, time_spent, score) VALUES (?, ?, ?, ?, ?, ?)',
-        [userId, lessonId, language, lessonTitle, timeSpent, score]
+        [userId, lessonId, courseName, lessonName, timeSpent, score]
       );
 
       // Обновляем активность за сегодня
@@ -368,6 +368,32 @@ export const unlockAchievement = async (userId: number, achievementType: string,
     }
   } catch (error) {
     console.error('Ошибка разблокировки достижения:', error);
+    throw error;
+  }
+};
+
+export const getLessonProgress = async (userId: number) => {
+  try {
+    const results = await db.getAllAsync(
+      'SELECT id, lesson_id, language as course_name, lesson_title as lesson_name, time_spent, score, completed_at FROM lesson_progress WHERE user_id = ? ORDER BY completed_at DESC',
+      [userId]
+    );
+    return results || [];
+  } catch (error) {
+    console.error('Ошибка получения прогресса уроков:', error);
+    throw error;
+  }
+};
+
+export const getQuizResults = async (userId: number) => {
+  try {
+    const results = await db.getAllAsync(
+      'SELECT id, quiz_id, quiz_title as quiz_name, score as correct_answers, total_questions, time_spent, completed_at FROM quiz_results WHERE user_id = ? ORDER BY completed_at DESC',
+      [userId]
+    );
+    return results || [];
+  } catch (error) {
+    console.error('Ошибка получения результатов тестов:', error);
     throw error;
   }
 }; 

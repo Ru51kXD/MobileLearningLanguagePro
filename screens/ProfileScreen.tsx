@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Animated, SafeAreaView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { getUserStats, getUser } from '../database/database';
+import { getUserStats, getUser, getLessonProgress, getQuizResults } from '../database/database';
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
@@ -387,6 +387,71 @@ const ProfileScreen = () => {
     );
   };
 
+  useEffect(() => {
+    loadUserStats();
+  }, []);
+
+  const loadUserStats = async () => {
+    try {
+      const lessons = await getLessonProgress(1);
+      const quizzes = await getQuizResults(1);
+      
+      const totalTime = lessons.reduce((sum: number, lesson: any) => sum + lesson.time_spent, 0) +
+                       quizzes.reduce((sum: number, quiz: any) => sum + quiz.time_spent, 0);
+      
+      const averageScore = quizzes.length > 0 
+        ? Math.round(quizzes.reduce((sum: number, quiz: any) => 
+            sum + (quiz.correct_answers / quiz.total_questions) * 100, 0) / quizzes.length)
+        : 0;
+
+      setStats({
+        lessonsCompleted: lessons.length,
+        testsCompleted: quizzes.length,
+        totalTime,
+        averageScore,
+        currentStreak: 3,
+        achievements: 1
+      });
+    } catch (error) {
+      console.error('Ошибка загрузки статистики:', error);
+    }
+  };
+
+  const menuItems = [
+    {
+      id: 'achievements',
+      title: 'Достижения',
+      subtitle: `${stats.achievements} получено`,
+      icon: 'trophy',
+      color: ['#f59e0b', '#d97706'],
+      onPress: () => navigation.navigate('Achievements')
+    },
+    {
+      id: 'statistics',
+      title: 'Статистика',
+      subtitle: 'Подробная статистика обучения',
+      icon: 'bar-chart',
+      color: ['#6366f1', '#4f46e5'],
+      onPress: () => navigation.navigate('Statistics')
+    },
+    {
+      id: 'settings',
+      title: 'Настройки',
+      subtitle: 'Уведомления и предпочтения',
+      icon: 'settings',
+      color: ['#8b5cf6', '#7c3aed'],
+      onPress: () => navigation.navigate('Settings')
+    },
+    {
+      id: 'help',
+      title: 'Помощь',
+      subtitle: 'FAQ и поддержка',
+      icon: 'help-circle',
+      color: ['#10b981', '#059669'],
+      onPress: () => navigation.navigate('Help')
+    }
+  ];
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -406,155 +471,95 @@ const ProfileScreen = () => {
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <LinearGradient
-        colors={['#6366f1', '#8b5cf6', '#a855f7']}
-        style={styles.header}
-      >
-        <Animated.View style={[styles.profileSection, {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }]
-        }]}>
-          <Animated.View style={[styles.avatarContainer, {
-            transform: [{
-              scale: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.5, 1],
-              })
-            }]
-          }]}>
-            <LinearGradient
-              colors={[userLevel.color, `${userLevel.color}CC`]}
-              style={styles.avatarGradient}
-            >
+    <SafeAreaView style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <LinearGradient
+          colors={['#6366f1', '#8b5cf6']}
+          style={styles.header}
+        >
+          <View style={styles.profileInfo}>
+            <View style={styles.avatar}>
               <Ionicons name="person" size={40} color="white" />
-            </LinearGradient>
-          </Animated.View>
+            </View>
+            <Text style={styles.name}>{user?.name || 'Студент'}</Text>
+            <Text style={styles.email}>{user?.email || 'student@programming.app'}</Text>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.quickStats}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{stats.lessonsCompleted}</Text>
+            <Text style={styles.statLabel}>Уроков</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{stats.testsCompleted}</Text>
+            <Text style={styles.statLabel}>Тестов</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{formatTime(stats.totalTime)}</Text>
+            <Text style={styles.statLabel}>Времени</Text>
+          </View>
+        </View>
+
+        <View style={styles.menuContainer}>
+          {menuItems.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.menuItem}
+              onPress={item.onPress}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={item.color}
+                style={styles.menuIcon}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name={item.icon as any} size={24} color="white" />
+              </LinearGradient>
+              
+              <View style={styles.menuContent}>
+                <Text style={styles.menuTitle}>{item.title}</Text>
+                <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+              </View>
+              
+              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={styles.additionalStats}>
+          <Text style={styles.sectionTitle}>Дополнительная статистика</Text>
           
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>{user?.name || 'Студент'}</Text>
-            <Text style={styles.userEmail}>{user?.email || 'student@programming.app'}</Text>
+          <View style={styles.statCard}>
+            <View style={styles.statCardHeader}>
+              <Ionicons name="flame" size={20} color="#f97316" />
+              <Text style={styles.statCardTitle}>Текущая серия</Text>
+            </View>
+            <Text style={styles.statCardValue}>{stats.currentStreak} дней</Text>
+            <Text style={styles.statCardSubtitle}>Продолжайте в том же духе!</Text>
           </View>
-          
-          <Animated.View style={[styles.levelBadge, {
-            backgroundColor: userLevel.color,
-            transform: [{
-              scale: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.8, 1],
-              })
-            }]
-          }]}>
-            <Ionicons name={userLevel.icon as any} size={16} color="white" />
-            <Text style={styles.levelText}>Уровень {userLevel.level} - {userLevel.title}</Text>
-          </Animated.View>
-        </Animated.View>
-      </LinearGradient>
 
-      <View style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Статистика</Text>
-          <View style={styles.statsGrid}>
-            <AnimatedStatCard
-              icon="book-outline"
-              value={stats.lessons_completed || 0}
-              label="Завершено уроков"
-              color="#10b981"
-              index={0}
-            />
-            <AnimatedStatCard
-              icon="help-circle-outline"
-              value={stats.quizzes_completed || 0}
-              label="Пройдено викторин"
-              color="#3b82f6"
-              index={1}
-            />
-            <AnimatedStatCard
-              icon="time-outline"
-              value={formatTime(stats.total_study_time || 0)}
-              label="Время обучения"
-              color="#8b5cf6"
-              index={2}
-            />
-            <AnimatedStatCard
-              icon="trophy-outline"
-              value={`${stats.best_quiz_score || 0}%`}
-              label="Лучший результат"
-              color="#ef4444"
-              index={3}
-            />
-            <AnimatedStatCard
-              icon="star-outline"
-              value={stats.perfect_scores || 0}
-              label="Идеальные тесты"
-              color="#f59e0b"
-              index={4}
-            />
-            <AnimatedStatCard
-              icon="code-outline"
-              value={stats.languages_studied || 0}
-              label="Изучено языков"
-              color="#06b6d4"
-              index={5}
-            />
+          <View style={styles.statCard}>
+            <View style={styles.statCardHeader}>
+              <Ionicons name="star" size={20} color="#f59e0b" />
+              <Text style={styles.statCardTitle}>Средний балл</Text>
+            </View>
+            <Text style={styles.statCardValue}>{stats.averageScore}%</Text>
+            <Text style={styles.statCardSubtitle}>По всем тестам</Text>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Достижения</Text>
-          <View style={styles.achievementsContainer}>
-            {achievementsList.map((achievement, index) => (
-              <AnimatedAchievement
-                key={achievement.id}
-                achievement={achievement}
-                index={index}
-              />
-            ))}
-          </View>
+        <View style={styles.appInfo}>
+          <Text style={styles.appVersion}>Версия приложения: 1.0.0</Text>
+          <TouchableOpacity onPress={() => Alert.alert('О приложении', 'Приложение для изучения программирования')}>
+            <Text style={styles.aboutLink}>О приложении</Text>
+          </TouchableOpacity>
         </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Настройки</Text>
-          <View style={styles.menuContainer}>
-            <AnimatedMenuItem
-              icon="person-outline"
-              title="Редактировать профиль"
-              subtitle="Изменить имя и email"
-              onPress={() => Alert.alert('👤 Профиль', 'Функция редактирования профиля будет доступна в следующей версии!')}
-              index={0}
-            />
-            <AnimatedMenuItem
-              icon="notifications-outline"
-              title="Уведомления"
-              subtitle="Настройки push-уведомлений"
-              onPress={() => Alert.alert('🔔 Уведомления', 'Настройка уведомлений будет доступна в следующей версии!')}
-              index={1}
-            />
-            <AnimatedMenuItem
-              icon="shield-outline"
-              title="Приватность"
-              subtitle="Настройки конфиденциальности"
-              onPress={() => Alert.alert('🔒 Приватность', 'Настройки приватности будут доступны в следующей версии!')}
-              index={2}
-            />
-            <AnimatedMenuItem
-              icon="help-circle-outline"
-              title="Справка"
-              subtitle="FAQ и поддержка"
-              onPress={() => Alert.alert('❓ Справка', 'Раздел справки будет доступен в следующей версии!')}
-              index={3}
-            />
-            <AnimatedMenuItem
-              icon="information-circle-outline"
-              title="О приложении"
-              subtitle="Версия 1.0.0"
-              onPress={() => Alert.alert('ℹ️ О приложении', 'Programming Learning App\nВерсия 1.0.0\n\nСоздано для изучения программирования')}
-              index={4}
-            />
-          </View>
-        </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -564,200 +569,87 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   header: {
-    paddingTop: 60,
+    paddingTop: 40,
     paddingBottom: 30,
     paddingHorizontal: 20,
-  },
-  profileSection: {
     alignItems: 'center',
   },
-  avatarContainer: {
-    marginBottom: 16,
+  profileInfo: {
+    alignItems: 'center',
   },
-  avatarGradient: {
+  avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  userInfo: {
     alignItems: 'center',
     marginBottom: 16,
   },
-  userName: {
+  name: {
     fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 4,
   },
-  userEmail: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 8,
+  email: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
   },
-  levelBadge: {
+  quickStats: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-    alignSelf: 'flex-start',
-  },
-  levelText: {
-    fontSize: 14,
-    color: 'white',
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  content: {
-    padding: 20,
-  },
-  section: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 16,
-  },
-  statsGrid: {
-    gap: 12,
-  },
-  statCard: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: -20,
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
-  statIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  statContent: {
+  statItem: {
     flex: 1,
+    alignItems: 'center',
   },
-
-  statValue: {
-    fontSize: 24,
+  statNumber: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#1f2937',
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6b7280',
-    lineHeight: 18,
+    fontWeight: '500',
   },
-  achievementsContainer: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  achievementCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  achievementIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  achievementInfo: {
-    flex: 1,
-  },
-  achievementTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  achievementTitleUnlocked: {
-    color: '#10b981',
-  },
-  achievementDescription: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  progressBar: {
-    width: '100%',
-    height: 4,
+  statDivider: {
+    width: 1,
     backgroundColor: '#e5e7eb',
-    borderRadius: 2,
-    marginRight: 8,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontSize: 14,
-    color: '#6b7280',
+    marginHorizontal: 16,
   },
   menuContainer: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginTop: 32,
+    marginHorizontal: 20,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'white',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 16,
   },
   menuContent: {
@@ -765,17 +657,68 @@ const styles = StyleSheet.create({
   },
   menuTitle: {
     fontSize: 16,
-    color: '#1f2937',
     fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 2,
   },
   menuSubtitle: {
     fontSize: 14,
     color: '#6b7280',
-    marginTop: 2,
   },
-  achievementUnlocked: {
-    borderColor: '#10b981',
+  additionalStats: {
+    marginTop: 32,
+    marginHorizontal: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 16,
+  },
+  statCard: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
     borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  statCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginLeft: 8,
+  },
+  statCardValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  statCardSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  appInfo: {
+    marginTop: 32,
+    marginHorizontal: 20,
+    marginBottom: 32,
+    alignItems: 'center',
+  },
+  appVersion: {
+    fontSize: 14,
+    color: '#9ca3af',
+    marginBottom: 8,
+  },
+  aboutLink: {
+    fontSize: 14,
+    color: '#6366f1',
+    fontWeight: '500',
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -786,7 +729,6 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 16,
   },
-
   footer: {
     alignItems: 'center',
     marginTop: 20,

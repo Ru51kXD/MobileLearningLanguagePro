@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { saveQuizResult } from '../database/database';
+import { quizzes, getQuizByLanguage, getQuizById } from '../data/quizzes';
 
 interface Question {
   id: number;
@@ -29,6 +30,7 @@ interface Quiz {
   questions: Question[];
   timeLimit?: number;
   difficulty: 'Начинающий' | 'Средний' | 'Продвинутый';
+  language: string;
 }
 
 interface RouteParams {
@@ -125,14 +127,49 @@ const QuizScreen = () => {
     }
   ];
 
-  const currentQuiz: Quiz = quiz || {
-    id: lesson?.id || 1,
-    title: lesson?.title || 'Тест по основам JavaScript',
-    description: 'Проверьте свои знания основ JavaScript',
-    questions: defaultQuestions,
-    timeLimit: 300, // 5 минут
-    difficulty: 'Начинающий'
+  // Получаем тест из базы данных или используем переданный
+  const getCurrentQuiz = (): Quiz => {
+    if (quiz) {
+      return quiz;
+    }
+    
+    // Если тест не передан, пытаемся найти его по названию урока или курса
+    if (lesson?.title && lesson.title.includes('Тест')) {
+      // Определяем язык по названию урока
+      const lessonTitle = lesson.title.toLowerCase();
+      let language = 'JavaScript'; // по умолчанию
+      
+      if (lessonTitle.includes('python')) language = 'Python';
+      else if (lessonTitle.includes('react') && !lessonTitle.includes('native')) language = 'React';
+      else if (lessonTitle.includes('java') && !lessonTitle.includes('script')) language = 'Java';
+      else if (lessonTitle.includes('c++')) language = 'C++';
+      else if (lessonTitle.includes('c#')) language = 'C#';
+      else if (lessonTitle.includes('php')) language = 'PHP';
+      else if (lessonTitle.includes('swift')) language = 'Swift';
+      else if (lessonTitle.includes('kotlin')) language = 'Kotlin';
+      else if (lessonTitle.includes('go')) language = 'Go';
+      else if (lessonTitle.includes('rust')) language = 'Rust';
+      else if (lessonTitle.includes('мобильная') || lessonTitle.includes('react native')) language = 'React Native';
+      
+      const foundQuiz = getQuizByLanguage(language);
+      if (foundQuiz) {
+        return foundQuiz;
+      }
+    }
+    
+    // Возвращаем первый доступный тест или тест по умолчанию
+    return quizzes[0] || {
+      id: lesson?.id || 1,
+      title: lesson?.title || 'Тест по основам JavaScript',
+      description: 'Проверьте свои знания основ JavaScript',
+      questions: defaultQuestions,
+      timeLimit: 300,
+      difficulty: 'Начинающий',
+      language: 'JavaScript'
+    };
   };
+
+  const currentQuiz: Quiz = getCurrentQuiz();
 
   const currentQuestion = currentQuiz.questions[currentQuestionIndex];
   const totalQuestions = currentQuiz.questions.length;

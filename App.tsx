@@ -16,6 +16,7 @@ import AchievementsScreen from './screens/AchievementsScreen';
 import StatisticsScreen from './screens/StatisticsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import HelpScreen from './screens/HelpScreen';
+import TestsScreen from './screens/TestsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -48,7 +49,8 @@ function ProfileStack() {
 function QuizStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="QuizMain" component={QuizScreen} />
+      <Stack.Screen name="TestsList" component={TestsScreen} />
+      <Stack.Screen name="QuizDetail" component={QuizScreen} />
     </Stack.Navigator>
   );
 }

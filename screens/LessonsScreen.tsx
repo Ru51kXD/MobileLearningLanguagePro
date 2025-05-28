@@ -80,7 +80,7 @@ const LessonsScreen = () => {
       description: 'Изучите основы JavaScript с нуля до продвинутого уровня',
       icon: 'logo-javascript',
       color: ['#f7df1e', '#f0d000'],
-      lessons: 24,
+      lessons: 8,
       difficulty: 'Начинающий',
       progress: 0,
       category: 'Веб-разработка',
@@ -162,8 +162,8 @@ let hobbies = ["программирование", "чтение"];`,
           title: 'Функции и области видимости',
           completed: false,
           lessons: [
-    {
-      id: 4,
+            {
+              id: 4,
               title: 'Объявление функций',
               description: 'Различные способы создания функций в JavaScript',
               content: `Функции в JavaScript можно создавать несколькими способами:
@@ -190,6 +190,110 @@ const greet = name => "Привет, " + name + "!";
               duration: 25,
               completed: false,
               type: 'theory'
+            },
+            {
+              id: 5,
+              title: 'Области видимости',
+              description: 'Понимание scope в JavaScript',
+              content: `Область видимости определяет, где переменные доступны в коде.
+
+Типы областей видимости:
+• Глобальная область
+• Функциональная область
+• Блочная область (let, const)
+
+Примеры:
+var globalVar = "Глобальная";
+
+function myFunction() {
+    var functionVar = "Функциональная";
+    
+    if (true) {
+        let blockVar = "Блочная";
+        const blockConst = "Блочная константа";
+    }
+}
+
+Hoisting - поднятие объявлений переменных и функций.`,
+              duration: 20,
+              completed: false,
+              type: 'theory'
+            },
+            {
+              id: 6,
+              title: 'Тест: Функции JavaScript',
+              description: 'Проверьте знания функций и областей видимости',
+              content: 'Тестирование знаний по функциям JavaScript',
+              duration: 10,
+              completed: false,
+              type: 'test'
+            }
+          ]
+        },
+        {
+          id: 3,
+          title: 'Объекты и массивы',
+          completed: false,
+          lessons: [
+            {
+              id: 7,
+              title: 'Работа с объектами',
+              description: 'Создание и использование объектов в JavaScript',
+              content: `Объекты - это коллекции пар ключ-значение.
+
+Создание объектов:
+const person = {
+    name: "Иван",
+    age: 30,
+    city: "Москва"
+};
+
+// Доступ к свойствам
+console.log(person.name);
+console.log(person["age"]);
+
+// Добавление свойств
+person.job = "Программист";
+
+// Методы объекта
+const calculator = {
+    add: function(a, b) {
+        return a + b;
+    },
+    multiply: (a, b) => a * b
+};`,
+              duration: 25,
+              completed: false,
+              type: 'theory'
+            },
+            {
+              id: 8,
+              title: 'Работа с массивами',
+              description: 'Методы массивов и их применение',
+              content: `Массивы - это упорядоченные списки элементов.
+
+Создание массивов:
+const fruits = ["яблоко", "банан", "апельсин"];
+const numbers = [1, 2, 3, 4, 5];
+
+Основные методы:
+• push() - добавить в конец
+• pop() - удалить с конца
+• shift() - удалить с начала
+• unshift() - добавить в начало
+
+Методы высшего порядка:
+• map() - преобразование
+• filter() - фильтрация
+• reduce() - свертка
+• forEach() - итерация
+
+Пример:
+const doubled = numbers.map(n => n * 2);
+const evens = numbers.filter(n => n % 2 === 0);`,
+              duration: 30,
+              completed: false,
+              type: 'theory'
             }
           ]
         }
@@ -201,7 +305,7 @@ const greet = name => "Привет, " + name + "!";
       description: 'Изучите Python - простой и мощный язык программирования',
       icon: 'logo-python',
       color: ['#3776ab', '#ffd43b'],
-      lessons: 20,
+      lessons: 6,
       difficulty: 'Начинающий',
       progress: 0,
       category: 'Программирование',
@@ -279,6 +383,120 @@ Python автоматически определяет тип переменно
               type: 'test'
             }
           ]
+        },
+        {
+          id: 2,
+          title: 'Функции и модули',
+          completed: false,
+          lessons: [
+            {
+              id: 4,
+              title: 'Функции в Python',
+              description: 'Создание и использование функций',
+              content: `Функции в Python создаются с помощью ключевого слова def.
+
+Синтаксис:
+def function_name(parameters):
+    """Документация функции"""
+    # тело функции
+    return result
+
+Примеры:
+def greet(name):
+    return f"Привет, {name}!"
+
+def add_numbers(a, b=0):
+    return a + b
+
+# Функция с переменным количеством аргументов
+def sum_all(*args):
+    return sum(args)
+
+# Функция с именованными аргументами
+def create_profile(**kwargs):
+    return kwargs
+
+# Лямбда-функции
+square = lambda x: x ** 2`,
+              duration: 25,
+              completed: false,
+              type: 'theory'
+            },
+            {
+              id: 5,
+              title: 'Модули и пакеты',
+              description: 'Организация кода в модули',
+              content: `Модули позволяют организовать код в отдельные файлы.
+
+Импорт модулей:
+import math
+from datetime import datetime
+import numpy as np
+from collections import Counter
+
+Создание собственного модуля:
+# файл mymodule.py
+def my_function():
+    return "Hello from module"
+
+PI = 3.14159
+
+# использование
+import mymodule
+result = mymodule.my_function()
+
+Популярные модули:
+• os - работа с операционной системой
+• sys - системные параметры
+• json - работа с JSON
+• requests - HTTP запросы
+• pandas - анализ данных`,
+              duration: 20,
+              completed: false,
+              type: 'theory'
+            }
+          ]
+        },
+        {
+          id: 3,
+          title: 'Объектно-ориентированное программирование',
+          completed: false,
+          lessons: [
+            {
+              id: 6,
+              title: 'Классы и объекты',
+              description: 'Основы ООП в Python',
+              content: `Классы - это шаблоны для создания объектов.
+
+Создание класса:
+class Person:
+    def __init__(self, name, age):
+        self.name = name
+        self.age = age
+    
+    def greet(self):
+        return f"Привет, меня зовут {self.name}"
+    
+    def have_birthday(self):
+        self.age += 1
+
+# Создание объекта
+person = Person("Анна", 25)
+print(person.greet())
+
+Наследование:
+class Student(Person):
+    def __init__(self, name, age, university):
+        super().__init__(name, age)
+        self.university = university
+    
+    def study(self):
+        return f"{self.name} учится в {self.university}"`,
+              duration: 30,
+              completed: false,
+              type: 'theory'
+            }
+          ]
         }
       ]
     },
@@ -288,7 +506,7 @@ Python автоматически определяет тип переменно
       description: 'Создавайте современные веб-приложения с React',
       icon: 'logo-react',
       color: ['#61dafb', '#21232a'],
-      lessons: 18,
+      lessons: 5,
       difficulty: 'Средний',
       progress: 0,
       category: 'Фронтенд',
@@ -348,6 +566,102 @@ function Button() {
   return <button onClick={() => alert('Клик!')}>Нажми меня</button>;
 }`,
               duration: 25,
+              completed: false,
+              type: 'theory'
+            },
+            {
+              id: 3,
+              title: 'Тест: Основы React',
+              description: 'Проверьте знания основ React',
+              content: 'Тестирование знаний по основам React',
+              duration: 10,
+              completed: false,
+              type: 'test'
+            }
+          ]
+        },
+        {
+          id: 2,
+          title: 'Состояние и хуки',
+          completed: false,
+          lessons: [
+            {
+              id: 4,
+              title: 'useState хук',
+              description: 'Управление состоянием компонента',
+              content: `useState - это хук для управления локальным состоянием.
+
+Синтаксис:
+const [state, setState] = useState(initialValue);
+
+Примеры:
+import React, { useState } from 'react';
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  
+  return (
+    <div>
+      <p>Счетчик: {count}</p>
+      <button onClick={() => setCount(count + 1)}>
+        Увеличить
+      </button>
+    </div>
+  );
+}
+
+Состояние с объектами:
+const [user, setUser] = useState({
+  name: '',
+  email: ''
+});
+
+const updateName = (newName) => {
+  setUser(prevUser => ({
+    ...prevUser,
+    name: newName
+  }));
+};`,
+              duration: 25,
+              completed: false,
+              type: 'theory'
+            },
+            {
+              id: 5,
+              title: 'useEffect хук',
+              description: 'Побочные эффекты в React',
+              content: `useEffect позволяет выполнять побочные эффекты.
+
+Синтаксис:
+useEffect(() => {
+  // код эффекта
+}, [dependencies]);
+
+Примеры:
+// Эффект при каждом рендере
+useEffect(() => {
+  console.log('Компонент обновился');
+});
+
+// Эффект только при монтировании
+useEffect(() => {
+  console.log('Компонент смонтирован');
+}, []);
+
+// Эффект с зависимостями
+useEffect(() => {
+  document.title = \`Счетчик: \${count}\`;
+}, [count]);
+
+// Очистка эффекта
+useEffect(() => {
+  const timer = setInterval(() => {
+    console.log('Тик');
+  }, 1000);
+  
+  return () => clearInterval(timer);
+}, []);`,
+              duration: 30,
               completed: false,
               type: 'theory'
             }
@@ -594,7 +908,7 @@ class Program {
       id: 8,
       title: 'PHP Веб-разработка',
       description: 'Создавайте динамические веб-сайты с PHP',
-      icon: 'logo-php',
+      icon: 'code-working',
       color: ['#777bb4', '#4f5b93'],
       lessons: 18,
       difficulty: 'Начинающий',
@@ -850,7 +1164,7 @@ fn main() {
       ]
     },
     {
-      id: 2,
+      id: 13,
       title: 'Python для начинающих',
       description: 'Изучите Python - простой и мощный язык программирования',
       icon: 'logo-python',
@@ -927,7 +1241,7 @@ Python автоматически определяет тип переменно
       ]
     },
     {
-      id: 3,
+      id: 14,
       title: 'React разработка',
       description: 'Создавайте современные веб-приложения с React',
       icon: 'logo-react',
@@ -975,7 +1289,7 @@ function Welcome(props) {
       ]
     },
     {
-      id: 4,
+      id: 15,
       title: 'Java программирование',
       description: 'Изучите объектно-ориентированное программирование на Java',
       icon: 'cafe-outline',
@@ -1025,7 +1339,7 @@ public class HelloWorld {
       ]
     },
     {
-      id: 5,
+      id: 16,
       title: 'Мобильная разработка',
       description: 'Создавайте мобильные приложения с React Native',
       icon: 'phone-portrait-outline',
@@ -1082,6 +1396,13 @@ const App = () => {
     }
   ];
 
+  // Функция для подсчета общего количества уроков в курсе
+  const calculateTotalLessons = (course: Course): number => {
+    return course.chapters.reduce((total, chapter) => 
+      total + chapter.lessons.length, 0
+    );
+  };
+
   // Используем coursesData вместо courses для отображения
   const displayCourses = coursesData.length > 0 ? coursesData : courses;
 
@@ -1111,7 +1432,22 @@ const App = () => {
   const startLesson = (lesson: Lesson) => {
     if (lesson.type === 'test') {
       // Получаем тест для текущего курса
-      const courseName = selectedCourse?.title.split(' ')[0] || 'JavaScript';
+      let courseName = selectedCourse?.title || 'JavaScript';
+      
+      // Нормализуем название курса для поиска теста
+      if (courseName.includes('JavaScript')) courseName = 'JavaScript';
+      else if (courseName.includes('Python')) courseName = 'Python';
+      else if (courseName.includes('React') && !courseName.includes('Native')) courseName = 'React';
+      else if (courseName.includes('Java') && !courseName.includes('Script')) courseName = 'Java';
+      else if (courseName.includes('Мобильная') || courseName.includes('React Native')) courseName = 'React Native';
+      else if (courseName.includes('C++')) courseName = 'C++';
+      else if (courseName.includes('C#')) courseName = 'C#';
+      else if (courseName.includes('PHP')) courseName = 'PHP';
+      else if (courseName.includes('Swift')) courseName = 'Swift';
+      else if (courseName.includes('Kotlin')) courseName = 'Kotlin';
+      else if (courseName.includes('Go')) courseName = 'Go';
+      else if (courseName.includes('Rust')) courseName = 'Rust';
+      
       const quiz = getQuizByLanguage(courseName);
       
       // Переходим к тесту
@@ -1289,7 +1625,7 @@ const App = () => {
               <View style={styles.courseStats}>
                 <View style={styles.statItem}>
                   <Ionicons name="book-outline" size={16} color="rgba(255,255,255,0.8)" />
-                  <Text style={styles.statText}>{course.lessons} уроков</Text>
+                  <Text style={styles.statText}>{calculateTotalLessons(course)} уроков</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Ionicons name="time-outline" size={16} color="rgba(255,255,255,0.8)" />

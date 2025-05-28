@@ -807,11 +807,103 @@ export const quizzes: Quiz[] = [
         explanation: 'Match - это мощная конструкция для сопоставления с образцом в Rust.'
       }
     ]
+  },
+
+  // React Native Quiz
+  {
+    id: 12,
+    title: 'Тест по React Native',
+    description: 'Проверьте свои знания React Native',
+    language: 'React Native',
+    difficulty: 'Продвинутый',
+    timeLimit: 400,
+    questions: [
+      {
+        id: 1,
+        question: 'Что такое React Native?',
+        options: [
+          'Веб-фреймворк',
+          'Фреймворк для мобильных приложений',
+          'База данных',
+          'Язык программирования'
+        ],
+        correctAnswer: 1,
+        explanation: 'React Native - это фреймворк для создания кроссплатформенных мобильных приложений.'
+      },
+      {
+        id: 2,
+        question: 'Какой компонент используется вместо div?',
+        options: [
+          'Container',
+          'View',
+          'Box',
+          'Wrapper'
+        ],
+        correctAnswer: 1,
+        explanation: 'В React Native компонент View используется вместо HTML div.'
+      },
+      {
+        id: 3,
+        question: 'Как создать кнопку в React Native?',
+        options: [
+          '<button>',
+          '<Button>',
+          '<TouchableOpacity>',
+          'Оба варианта B и C'
+        ],
+        correctAnswer: 3,
+        explanation: 'В React Native можно использовать как Button, так и TouchableOpacity для создания кнопок.'
+      },
+      {
+        id: 4,
+        question: 'Что такое StyleSheet в React Native?',
+        options: [
+          'CSS файл',
+          'Объект для создания стилей',
+          'HTML тег',
+          'JavaScript библиотека'
+        ],
+        correctAnswer: 1,
+        explanation: 'StyleSheet - это объект React Native для создания и оптимизации стилей.'
+      },
+      {
+        id: 5,
+        question: 'Какой хук используется для навигации?',
+        options: [
+          'useRouter',
+          'useNavigation',
+          'useRoute',
+          'useNavigate'
+        ],
+        correctAnswer: 1,
+        explanation: 'useNavigation - это хук React Navigation для программной навигации.'
+      }
+    ]
   }
 ];
 
 export const getQuizByLanguage = (language: string): Quiz | undefined => {
-  return quizzes.find(quiz => quiz.language === language);
+  // Нормализуем название языка для поиска
+  const normalizedLanguage = language.toLowerCase();
+  
+  const languageMap: { [key: string]: string } = {
+    'javascript': 'JavaScript',
+    'python': 'Python', 
+    'react': 'React',
+    'java': 'Java',
+    'c++': 'C++',
+    'c#': 'C#',
+    'php': 'PHP',
+    'swift': 'Swift',
+    'kotlin': 'Kotlin',
+    'go': 'Go',
+    'rust': 'Rust',
+    'мобильная': 'React Native',
+    'react native': 'React Native'
+  };
+  
+  const mappedLanguage = languageMap[normalizedLanguage] || language;
+  return quizzes.find(quiz => quiz.language === mappedLanguage);
 };
 
 export const getQuizById = (id: number): Quiz | undefined => {

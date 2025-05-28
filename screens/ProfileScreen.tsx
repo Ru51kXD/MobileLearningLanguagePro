@@ -99,7 +99,7 @@ const ProfileScreen = () => {
 
   const achievementsList = [
     {
-      id: 1,
+      id: 'profile_1',
       title: 'Первые шаги',
       description: 'Завершен первый урок',
       icon: 'footsteps-outline',
@@ -108,7 +108,7 @@ const ProfileScreen = () => {
       progress: Math.min((stats.lessons_completed || 0), 1)
     },
     {
-      id: 2,
+      id: 'profile_2',
       title: 'Знаток языков',
       description: 'Изучено 3 языка программирования',
       icon: 'library-outline',
@@ -117,7 +117,7 @@ const ProfileScreen = () => {
       progress: Math.min((stats.languages_studied || 0) / 3, 1)
     },
     {
-      id: 3,
+      id: 'profile_3',
       title: 'Тестировщик',
       description: 'Пройдено 5 викторин',
       icon: 'checkmark-circle-outline',
@@ -126,7 +126,7 @@ const ProfileScreen = () => {
       progress: Math.min((stats.quizzes_completed || 0) / 5, 1)
     },
     {
-      id: 4,
+      id: 'profile_4',
       title: 'Перфекционист',
       description: 'Получено 3 идеальных результата',
       icon: 'diamond-outline',
@@ -135,7 +135,7 @@ const ProfileScreen = () => {
       progress: Math.min((stats.perfect_scores || 0) / 3, 1)
     },
     {
-      id: 5,
+      id: 'profile_5',
       title: 'Постоянство',
       description: 'Streak 7 дней',
       icon: 'flame-outline',
@@ -144,7 +144,7 @@ const ProfileScreen = () => {
       progress: Math.min((stats.longest_streak || 0) / 7, 1)
     },
     {
-      id: 6,
+      id: 'profile_6',
       title: 'Студент года',
       description: 'Изучение более 10 часов',
       icon: 'school-outline',
